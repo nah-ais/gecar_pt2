@@ -564,7 +564,7 @@ with tabs[0]:
             yaxis_title="", xaxis_title="Frekuensi Kata Kunci",
             title_text="",
         )
-        st.plotly_chart(fig, use_container_width=True)
+        st.plotly_chart(fig, width="stretch")
 
     with col_b:
         st.markdown("**🏛️ KII (Pemerintah & Tokoh Kunci)** — Tema dominan dalam tanggapan narasumber")
@@ -582,7 +582,7 @@ with tabs[0]:
             height=400,
             yaxis_title="", xaxis_title="Frekuensi Kata Kunci",
         )
-        st.plotly_chart(fig2, use_container_width=True)
+        st.plotly_chart(fig2, width="stretch")
 
     # Radar comparison
     st.markdown("""
@@ -629,7 +629,7 @@ with tabs[0]:
         height=420,
         showlegend=True,
     )
-    st.plotly_chart(fig_radar, use_container_width=True)
+    st.plotly_chart(fig_radar, width="stretch")
 
     st.markdown("""
     <div class="quote-block">
@@ -675,7 +675,7 @@ with tabs[1]:
             color_discrete_sequence=COLORS['chart'],
         )
         fig_bar.update_layout(**PLOTLY_TEMPLATE['layout'], height=380, xaxis_title="", yaxis_title="Jumlah Respons")
-        st.plotly_chart(fig_bar, use_container_width=True)
+        st.plotly_chart(fig_bar, width="stretch")
 
     with col2:
         st.markdown("#### 🎯 Kategori Pertanyaan Terbanyak")
@@ -688,7 +688,7 @@ with tabs[1]:
         )
         fig_pie.update_traces(textposition='inside', textinfo='percent+label', textfont_size=10)
         fig_pie.update_layout(**PLOTLY_TEMPLATE['layout'], height=380, showlegend=False)
-        st.plotly_chart(fig_pie, use_container_width=True)
+        st.plotly_chart(fig_pie, width="stretch")
 
     # 2. ISU UTAMA: Ketegangan & Kebutuhan
     st.markdown("<hr class='custom-divider'>", unsafe_allow_html=True)
@@ -735,7 +735,7 @@ with tabs[1]:
                 height=340, title_text="Jenis Ketegangan (Kelompok Masyarakat)",
                 yaxis_title="", xaxis_title="Kemunculan dalam Respons",
             )
-            st.plotly_chart(fig_tag, use_container_width=True)
+            st.plotly_chart(fig_tag, width="stretch")
 
     with col_b:
         st.markdown("**💬 Kutipan Langsung — Ketegangan di Komunitas**")
@@ -783,7 +783,7 @@ with tabs[1]:
         height=380, xaxis_title="", yaxis_title="Kemunculan",
         xaxis_tickangle=-20,
     )
-    st.plotly_chart(fig_keb, use_container_width=True)
+    st.plotly_chart(fig_keb, width="stretch")
 
     # 4. ISU 3: Rasa Aman & Ketakutan
     st.markdown("<hr class='custom-divider'>", unsafe_allow_html=True)
@@ -820,7 +820,7 @@ with tabs[1]:
             height=350, title_text="Jenis Ketakutan: Anak vs Dewasa",
             yaxis_title="", xaxis_title="Jumlah Responden",
         )
-        st.plotly_chart(fig_fear, use_container_width=True)
+        st.plotly_chart(fig_fear, width="stretch")
 
     with col_f2:
         st.markdown("**🛡️ Kutipan — Apa yang Membuat Mereka Merasa Aman?**")
@@ -871,7 +871,7 @@ with tabs[1]:
         color_discrete_sequence=COLORS['chart'],
     )
     fig_ske.update_layout(**PLOTLY_TEMPLATE['layout'], height=380)
-    st.plotly_chart(fig_ske, use_container_width=True)
+    st.plotly_chart(fig_ske, width="stretch")
 
 
 # ═══════════════════════════════════════════════════════════════════════
@@ -917,7 +917,7 @@ with tabs[2]:
             coloraxis_showscale=False, height=300,
             title_text="Kemunculan Isu Narkoba/Aibon per Narasumber",
         )
-        st.plotly_chart(fig_nark, use_container_width=True)
+        st.plotly_chart(fig_nark, width="stretch")
 
     with col_n2:
         st.markdown("**⚠️ Fakta Kritis dari KII:**")
@@ -961,7 +961,7 @@ with tabs[2]:
             color_continuous_scale=['#1e1b4b', '#818cf8'],
         )
         fig_aktor.update_layout(**PLOTLY_TEMPLATE['layout'], height=320, title_text="Akar Sumber Konflik (Perspektif KII)")
-        st.plotly_chart(fig_aktor, use_container_width=True)
+        st.plotly_chart(fig_aktor, width="stretch")
 
     with col_k2:
         st.markdown("**💬 Perspektif Narasumber tentang Konflik:**")
@@ -995,7 +995,7 @@ with tabs[2]:
     fig_rentan.update_traces(textinfo='percent+label', textfont_size=11)
     fig_rentan.update_layout(**PLOTLY_TEMPLATE['layout'], height=350, showlegend=True,
                              title_text="Kelompok Rentan yang Disebutkan Narasumber KII")
-    st.plotly_chart(fig_rentan, use_container_width=True)
+    st.plotly_chart(fig_rentan, width="stretch")
 
     # ISU 4: Pendidikan
     st.markdown("<hr class='custom-divider'>", unsafe_allow_html=True)
@@ -1036,7 +1036,7 @@ with tabs[2]:
             text_auto=True,
         )
         fig_proj.update_layout(**PLOTLY_TEMPLATE['layout'], height=340, xaxis_title="Aspek Proyeksi", yaxis_title="Jumlah Respons")
-        st.plotly_chart(fig_proj, use_container_width=True)
+        st.plotly_chart(fig_proj, width="stretch")
     else:
         st.info("Tidak ada data proyeksi dalam filter saat ini.")
 
@@ -1093,7 +1093,7 @@ with tabs[3]:
         xaxis_title="",
         title_text="Perbandingan Prioritas Isu: Kelompok vs KII",
     )
-    st.plotly_chart(fig_comp, use_container_width=True)
+    st.plotly_chart(fig_comp, width="stretch")
 
     # Gap analysis
     st.markdown("#### 🚦 Analisis Gap: Isu Mana yang Under/Over-Prioritas?")
@@ -1150,7 +1150,7 @@ with tabs[3]:
         yaxis_title="Tingkat Urgensi Isu (1=Rendah, 10=Tinggi)",
         title_text="📌 Kuadran Prioritas: Isu dengan Urgensi Tinggi & Respons Rendah = DARURAT",
     )
-    st.plotly_chart(fig_mat, use_container_width=True)
+    st.plotly_chart(fig_mat, width="stretch")
     st.caption("⚠️ Isu di kuadran kanan atas: urgensi tinggi, respons memadai. Isu di kiri atas: DARURAT — urgensi tinggi namun respons rendah.")
 
 
