@@ -190,7 +190,7 @@ def extract_top_keywords(series, keyword_groups: dict, wilayah_series=None, wila
 # PLOT HELPERS
 # ─────────────────────────────────────────────
 COLORS_MAIN = ["#c0392b", "#e67e22", "#f1c40f", "#2ecc71", "#2980b9",
-                "#8e44ad", "#16a085", "#d35400", "#1abc9c", "#e74c3c", "#34495e"]
+                "#8e44ad", "#16a085", "#d35400", "#1abc9c", "#e74c3c"]
 
 def bar_chart(df, x, y, title, color_col=None, orientation="v"):
     if orientation == "h":
@@ -337,12 +337,14 @@ with tab1:
     st.markdown("""
     <div class="issue-card">
         <div class="issue-title">⚠️ Ketegangan Utama yang Mempengaruhi Keluarga</div>
-        <div class="issue-desc">Dari tanggapan masyarakat, ketegangan bersumber dari klaster besar: 
-        perilaku destruktif, ketidakadilan distribusi bantuan, konflik horizontal, serta kerentanan lingkungan akibat cuaca ekstrem atau bencana alam lokal yang mempengaruhi ketahanan pangan keluarga.</div>
+        <div class="issue-desc">Dari tanggapan masyarakat, ketegangan bersumber dari tiga klaster besar: 
+        <b>perilaku destruktif</b> (miras, narkoba, perjudian online), <b>ketidakadilan distribusi bantuan</b> pemerintah 
+        (bantuan hanya untuk simpatisan/keluarga pemimpin), dan <b>konflik horizontal</b> (perang suku, sengketa tanah, 
+        kenakalan remaja). Isu korupsi pemerintah kampung dan kriminalitas berbasis ekonomi (begal, pencurian) 
+        saling memperburuk satu sama lain.</div>
     </div>
     """, unsafe_allow_html=True)
 
-    # TAMBAHAN: Isu bencana alam dimasukkan ke dalam tension_keywords
     tension_keywords = {
         "Miras / Mabuk": ["mabok", "mabuk", "miras", "alkohol", "minuman keras"],
         "Narkoba / Aibon": ["narkoba", "aibon", "ganja", "obat terlarang"],
@@ -352,7 +354,6 @@ with tab1:
         "Korupsi / Dana Desa": ["dana desa", "kepala kampung", "korupsi", "dipotong", "simpatisan", "musrenbang"],
         "Kekerasan Fisik / KDRT": ["kekerasan", "dipukul", "parang", "pukul", "pukuli"],
         "Sengketa Tanah": ["sengketa tanah", "batas wilayah", "hak tanah", "hak ulayat", "lahan"],
-        "Bencana Alam / Lingkungan": ["bencana", "banjir", "gempa", "longsor", "kekeringan", "iklim", "cuaca", "air pasang"]
     }
 
     col_t1, col_t2 = st.columns([3, 2])
@@ -364,6 +365,7 @@ with tab1:
             st.plotly_chart(fig, width="stretch")
 
     with col_t2:
+        # Per wilayah breakdown untuk ketegangan
         df_w = []
         for w in dfk["Wilayah"].unique():
             sub = dfk[dfk["Wilayah"] == w]["Tanggapan"]
@@ -404,7 +406,10 @@ with tab1:
     <div class="issue-card">
         <div class="issue-title">💧 Akses Air, Pendidikan, Kesehatan & Ekonomi</div>
         <div class="issue-desc">Kebutuhan dasar yang paling banyak disebut adalah air bersih (PAH/blong rusak berulang), 
-        akses pendidikan yang terbatas, kesehatan anak, dan mitigasi lingkungan/ekonomi produktif menghadapi perubahan musim.</div>
+        akses pendidikan yang terbatas (gedung TK menumpang, MCK sekolah tidak ada, biaya komite memberatkan), 
+        kesehatan anak (imunisasi kurang, ibu hamil tidak periksa), dan ekonomi produktif 
+        (keramba ikan, kebun apung, bensin untuk mencari nafkah). Distribusi bantuan yang tidak merata 
+        memperburuk ketimpangan antar kampung.</div>
     </div>
     """, unsafe_allow_html=True)
 
@@ -436,11 +441,17 @@ with tab1:
     st.markdown("""
     <div class="issue-card">
         <div class="issue-title">🚨 KDRT, Kekerasan Orang Tua, dan Pembatasan Peran Perempuan</div>
+        <div class="issue-desc">Dari tanggapan anak-anak di Sentani, ditemukan frekuensi tinggi ketakutan terhadap 
+        kekerasan fisik dari orang tua (terutama ayah). Anak perempuan secara spesifik menghadapi pembatasan budaya 
+        (tidak boleh duduk di rumah adat, dianggap buruk jika tampil di gereja), bullying di lingkungan kampung, 
+        dan ketakutan pelecehan dari orang mabuk. Isu HIV pada anak SD yang disebut Dinas Sosial Sentani 
+        menunjukkan korelasi kuat antara penyalahgunaan zat dan kekerasan seksual.</div>
     </div>
     """, unsafe_allow_html=True)
 
     col_v1, col_v2 = st.columns(2)
     with col_v1:
+        # Ketakutan anak berdasarkan gender di Sentani
         sentani_anak = dfk[(dfk["Wilayah"] == "Sentani") & (dfk["Kelompok_Usia"] == "Anak")]
         violence_kws = {
             "Kekerasan fisik dari orang tua": ["dipukul", "pukul", "kekerasan fisik"],
@@ -489,7 +500,17 @@ with tab1:
 
     # ── ISU 4: Harapan Pemuda & Kontribusi ──
     st.markdown("### 🟢 Isu 4 · Harapan & Potensi Pemuda")
-    
+    st.markdown("""
+    <div class="issue-card">
+        <div class="issue-title">💚 Anak Muda Ingin Berkontribusi – Namun Terkendala Kesempatan</div>
+        <div class="issue-desc">Terlepas dari kondisi komunitas yang penuh tekanan, anak-anak dan remaja 
+        mengekspresikan harapan konkret: menjadi pengajar di rumah baca, aktif di gereja, ikut lomba budaya, 
+        dan mendapat pekerjaan setelah lulus. Hambatan terbesar adalah minimnya lapangan kerja di kampung, 
+        terbatasnya fasilitas olahraga dan ruang publik, serta arus migrasi keluar yang mengurangi 
+        mentor/kakak pembina.</div>
+    </div>
+    """, unsafe_allow_html=True)
+
     hope_keywords = {
         "Pendidikan & Belajar": ["belajar", "sekolah", "kuliah", "ijazah", "beasiswa", "rumah baca", "mengajar"],
         "Pekerjaan / Ekonomi": ["kerja", "pekerjaan", "lowongan", "usaha", "modal"],
@@ -588,15 +609,19 @@ with tab1:
 with tab2:
     st.markdown('<div class="section-header">🏛️ Analisis Tanggapan KII – Pemerintah & Lembaga</div>', unsafe_allow_html=True)
 
+    # ── ISU 1 KII: Akar Ketegangan ──
     st.markdown("### 🔴 Isu 1 · Akar Ketegangan Struktural & Lokal")
     st.markdown("""
     <div class="issue-card">
-        <div class="issue-title">🏗️ Nepotisme, Kesenjangan, Konflik Lahan, dan Kerentanan Krisis Ekologis</div>
-        <div class="issue-desc">Para narasumber KII mengidentifikasi akar masalah struktural, termasuk bagaimana deforestasi massif atau bencana alam lokal memperparah kerentanan sosial OAP.</div>
+        <div class="issue-title">🏗️ Nepotisme, Kesenjangan OAP–Pendatang, dan Konflik Lahan Adat</div>
+        <div class="issue-desc">Para narasumber KII mengidentifikasi akar masalah yang lebih dalam dari sekadar konflik antar-kelompok: 
+        <b>nepotisme birokrasi</b> yang menciptakan ketidakpercayaan publik pada pemerintah, 
+        <b>kesenjangan ekonomi antara OAP (Orang Asli Papua) dan pendatang</b> yang memicu polarisasi identitas, 
+        serta <b>pengabaian hak adat</b> dalam proyek-proyek PSN/pembangunan. Di Asmat, deforestasi massif untuk PSN Pangan 
+        tanpa AMDAL dan persetujuan adat menjadi pemicu konflik baru yang potensial.</div>
     </div>
     """, unsafe_allow_html=True)
 
-    # TAMBAHAN: Isu bencana alam dimasukkan ke dalam kii_keywords
     tension_kii_kws = {
         "Nepotisme / Korupsi Birokrasi": ["nepotisme", "birokrasi", "korupsi", "transparan", "distribusi tidak merata", "musrenbang"],
         "Kesenjangan OAP vs Pendatang": ["oap", "pendatang", "polarisasi", "identitas", "rasisme"],
@@ -606,7 +631,6 @@ with tab2:
         "Masalah Rumah Tangga / Sosial": ["perselingkuhan", "rumah tangga", "mabuk", "kriminal"],
         "Isu Politik Lokal": ["pemilu", "pilkada", "rekrutmen", "pejabat", "kepala kampung"],
         "Trauma Sosial / Historis": ["trauma", "historis", "konflik masa lalu", "susi air"],
-        "Bencana Alam / Dampak Iklim": ["bencana", "banjir", "gempa", "longsor", "kekeringan", "iklim", "cuaca", "ekologis"]
     }
 
     col_k1, col_k2 = st.columns([3, 2])
@@ -618,9 +642,12 @@ with tab2:
             st.plotly_chart(fig, width="stretch")
 
     with col_k2:
+        # Ketegangan per wilayah KII
+        # Gunakan df_kii (data asli, sebelum filter) agar semua wilayah selalu muncul,
+        # lalu terapkan filter Narsum saja agar chart konsisten dengan sidebar
         df_tkii_w = []
-        base_kii = df_kii[df_kii["Narsum"].isin(sel_narsum)]
-        for w in sorted(df_kii["Wilayah"].unique()):
+        base_kii = df_kii[df_kii["Narsum"].isin(sel_narsum)]  # hanya filter narsum, bukan wilayah
+        for w in sorted(df_kii["Wilayah"].unique()):           # iterasi SEMUA wilayah dari data asli
             sub = base_kii[base_kii["Wilayah"] == w]["Tanggapan"]
             for label, kws in tension_kii_kws.items():
                 pattern = "|".join(kws)
@@ -629,6 +656,7 @@ with tab2:
                     df_tkii_w.append({"Wilayah": w, "Isu": label, "Jumlah": cnt})
         df_tkii_w = pd.DataFrame(df_tkii_w)
         if not df_tkii_w.empty:
+            # Urutkan wilayah agar tampil konsisten: Asmat, Jayawijaya, Sentani
             wilayah_order = sorted(df_kii["Wilayah"].unique().tolist())
             df_tkii_w["Wilayah"] = pd.Categorical(df_tkii_w["Wilayah"], categories=wilayah_order, ordered=True)
             df_tkii_w = df_tkii_w.sort_values("Wilayah")
@@ -645,11 +673,32 @@ with tab2:
             )
             st.plotly_chart(fig2, width="stretch")
 
+    st.markdown("**Kutipan KII – Akar Ketegangan:**")
+    kii_q1 = [
+        ("Jayawijaya | JPY", "Nepotisme birokrasi yang memperkuat ketidakpercayaan pada pemerintah."),
+        ("Jayawijaya | JPY", "Polarisasi identitas (OAP vs pendatang) menjadi akar ketegangan yang sering diabaikan."),
+        ("Asmat | WBW", "Paradigma 'Tanah Kosong' vs. nilai sakral lahan adat. Sidang MPL PGI Februari 2026 menolak PSN pangan dan militerisme."),
+        ("Jayawijaya | ACL", "Sejak pemekaran provinsi, arus pendatang dari kabupaten lain memperbesar peluang bentrokan, terutama di pasar dan terminal."),
+    ]
+    for narsum, q in kii_q1:
+        st.markdown(f'<div class="quote-box"><span class="tag">{narsum}</span> {q}</div>', unsafe_allow_html=True)
+
     st.divider()
 
     # ── ISU 2 KII: Kelompok Rentan ──
     st.markdown("### 🟠 Isu 2 · Kelompok Rentan yang Paling Terdampak")
-    
+    st.markdown("""
+    <div class="issue-card">
+        <div class="issue-title">👶 Anak-Anak, Perempuan, Ibu Hamil & Komunitas Terpencil</div>
+        <div class="issue-desc">KII sepakat bahwa anak-anak dan remaja adalah kelompok paling rentan. 
+        Di Jayawijaya, anak-anak usia 10 tahun ke atas sudah dilibatkan dalam perang suku, kehilangan minat sekolah, 
+        dan mengalami trauma konflik. Ibu hamil dan balita di Asmat "hanya bisa pasrah". 
+        Di Sentani, Dinas Sosial menemukan anak SD terinfeksi HIV – diduga akibat kekerasan seksual yang dipicu narkoba/alkohol, 
+        serta anak-anak yang menggunakan aibon di jalanan. Komunitas terpencil (Tolikara, Nduga) 
+        mengalami isolasi logistik yang ekstrem.</div>
+    </div>
+    """, unsafe_allow_html=True)
+
     vuln_kws = {
         "Anak-anak / Remaja": ["anak", "remaja", "pelajar", "generasi muda"],
         "Perempuan": ["perempuan", "ibu", "mama", "wanita"],
@@ -683,11 +732,26 @@ with tab2:
         }
         st.dataframe(pd.DataFrame(vuln_data), width="stretch", hide_index=True)
 
+        st.markdown('<div class="alert-red">🚨 Dinas Sosial Sentani: Ditemukan anak SD terinfeksi HIV, diduga karena kekerasan seksual yang dipicu alkohol/narkoba.</div>', unsafe_allow_html=True)
+        st.markdown('<div class="alert-yellow">⚠️ Jayawijaya: Anak usia 10 tahun sudah diajak perang suku dan memegang senjata tajam.</div>', unsafe_allow_html=True)
+
     st.divider()
 
-    # ── ISU 3 KII: Aktor Berpengaruh ──
+    # ── ISU 3 KII: Aktor Berpengaruh & Dinamika ──
     st.markdown("### 🟡 Isu 3 · Peta Aktor Berpengaruh & Dinamika Kekuasaan")
-    
+    st.markdown("""
+    <div class="issue-card">
+        <div class="issue-title">🕸️ Pemerintah, Adat, Agama, Pemuda & LSM – Relasi yang Kompleks</div>
+        <div class="issue-desc">KII di Asmat memetakan enam klaster aktor utama: Politik/Pemda, Keamanan (TNI-Polri), 
+        Adat/Budaya, Agama (Gereja), Pemuda, dan Kemanusiaan (LSM). Gereja adalah mediator paling netral dan diterima. 
+        Kepala kampung mendapat kepercayaan rendah dari masyarakat karena dinilai memihak. 
+        Pemuda adalah "faktor paling dinamis" – mobilisasi massa tercepat dan bisa berubah hanya karena satu insiden. 
+        WVI (Wahana Visi Indonesia) dinilai positif karena langsung turun ke masyarakat, 
+        berbeda dari LSM lain yang lebih banyak menghabiskan biaya kegiatan.</div>
+    </div>
+    """, unsafe_allow_html=True)
+
+    # Actor influence map
     actor_data = {
         "Aktor": ["Gereja / Tokoh Agama", "Kepala Suku / Adat", "TNI / Polri", "Pemerintah / Pemda",
                    "Pemuda", "LSM / NGO", "Kepala Kampung", "WVI"],
@@ -718,15 +782,26 @@ with tab2:
             ("Dewan Gereja", "Masyarakat biasanya menghargai dan mendengar."),
             ("WVI", "Masyarakat sangat berterima kasih karena WVI turun langsung ke orang tua dan anak-anak."),
             ("Kepala Kampung", "Tidak peduli dengan masyarakat dan kurang dipercaya masyarakat."),
+            ("Pemerintah", "Pola pikir masyarakat: 'Kalau tidak dapat bantuan, kalian balik saja.'"),
         ]
         for aktor, q in actor_quotes:
             st.markdown(f'<div class="quote-box"><span class="tag">{aktor}</span> "{q}"</div>', unsafe_allow_html=True)
 
     st.divider()
 
-    # ── ISU 4 KII: Rekomendasi ──
-    st.markdown("### 🟢 Isu 4 · Rekomendasi Kegiatan Pembinaan Perdamaian & Kesiapsiagaan")
-    
+    # ── ISU 4 KII: Rekomendasi Pembinaan Perdamaian ──
+    st.markdown("### 🟢 Isu 4 · Rekomendasi Kegiatan Pembinaan Perdamaian")
+    st.markdown("""
+    <div class="issue-card">
+        <div class="issue-title">☮️ Intervensi Multidimensi: Jangka Pendek, Menengah, dan Panjang</div>
+        <div class="issue-desc">KII merekomendasikan pendekatan berlapis: jangka pendek (posko ramah anak, 
+        konseling trauma, bantuan gizi darurat), jangka menengah (program sekolah aman, pelatihan guru trauma, 
+        forum pemuda produktif), dan jangka panjang (beasiswa, kurikulum damai berbasis lokal, 
+        unit perlindungan anak daerah). Dialog berbasis adat dan tokoh gereja sebagai co-host dinilai kunci 
+        untuk penerimaan komunitas.</div>
+    </div>
+    """, unsafe_allow_html=True)
+
     peace_kws = {
         "Psikososial / Trauma": ["trauma", "psikososial", "konseling", "pemulihan", "dukungan"],
         "Pendidikan Perdamaian": ["kurikulum damai", "edukasi perdamaian", "sekolah aman", "pelatihan guru"],
@@ -748,6 +823,7 @@ with tab2:
             st.plotly_chart(fig, width="stretch")
 
     with col_p2:
+        # Per narsum breakdown
         df_peace_ns = []
         for ns in dfkii["Narsum"].unique():
             sub = dfkii[dfkii["Narsum"] == ns]
@@ -771,9 +847,21 @@ with tab2:
 
     st.divider()
 
-    # ── ISU 5 KII: Skenario ──
+    # ── ISU 5 KII: Skenario & Dampak bagi LSM ──
     st.markdown("### 🔵 Isu 5 · Skenario Masa Depan & Implikasi bagi Operasional LSM")
-    
+    st.markdown("""
+    <div class="issue-card">
+        <div class="issue-title">📈 6 Bulan ke Depan: Risiko Eskalasi & Window of Opportunity</div>
+        <div class="issue-desc">KII memproyeksikan bahwa situasi politik pascapemilu relatif stabil di tingkat makro, 
+        namun di level kampung terdapat risiko: dana bantuan yang cair cepat habis tanpa tabungan, 
+        Linmas tidak berjaga rutin, dan kepercayaan terhadap pemerintah kampung sangat rendah. 
+        Di Asmat, PSN Pangan dan deforestasi masif berpotensi memicu konflik lahan baru. 
+        Untuk operasional LSM, rekomendasinya adalah membangun "Community Acceptance Strategy" 
+        berbasis tokoh adat, contingency plan beralih ke metode daring/radio komunitas, 
+        dan program WVI perlu diselaraskan dengan rapat kampung agar tidak dianggap proyek eksternal.</div>
+    </div>
+    """, unsafe_allow_html=True)
+
     scenario_kii_kws = {
         "Stabilitas Terjaga": ["stabil", "terkendali", "aman", "sukses", "damai"],
         "Risiko Konflik Lahan": ["lahan", "ulayat", "deforestasi", "psn", "konflik baru"],
@@ -809,7 +897,9 @@ with tab2:
         st.markdown("**Kutipan KII – Proyeksi & Rekomendasi:**")
         kii_sc_quotes = [
             ("Asmat | WBW", "Sidang MPL PGI Februari 2026 menolak PSN pangan dan militerisme. Deforestasi masif menghancurkan sumber pangan alami masyarakat adat."),
-            ("Asmat | RJF", "Contingency Plan: alih metode ke daring/radio komunitas bila perlu."),
+            ("Asmat | RJF", "Contingency Plan: alih metode ke daring/radio komunitas bila perlu. Stakeholder Engagement Map per distrik: adat–agama–pemda–aparat."),
+            ("Sentani | Dinas Sosial", "Program WVI diselaraskan dengan program kampung agar diketahui saat rapat kampung."),
+            ("Jayawijaya | GTY", "Edukasi perdamaian berbasis komunitas akar rumput dengan melibatkan tokoh lokal sebagai agen perubahan."),
         ]
         for narsum, q in kii_sc_quotes:
             st.markdown(f'<div class="quote-box"><span class="tag">{narsum}</span> {q}</div>', unsafe_allow_html=True)
@@ -821,12 +911,12 @@ with tab2:
 with tab3:
     st.markdown('<div class="section-header">📊 Perbandingan Perspektif & Laporan Eksekutif</div>', unsafe_allow_html=True)
 
+    # ── Radar Chart Perbandingan ──
     st.markdown("### 🔍 Perbandingan Isu Utama: Perspektif Masyarakat vs. KII Pemerintah")
 
-    # TAMBAHAN: Isu bencana alam & lingkungan dimasukkan ke radar chart perbandingan
     shared_dimensions = ["Narkoba / Zat Berbahaya", "Korupsi / Dana Desa", "Kekerasan & Kriminalitas",
-                         "Kebutuhan Pendidikan", "Kebutuhan Kesehatan", "Konflik Lahan / Adat",
-                         "Harapan pada Pemuda", "Kepercayaan pada Pemerintah", "Bencana Alam & Lingkungan"]
+                          "Kebutuhan Pendidikan", "Kebutuhan Kesehatan", "Konflik Lahan / Adat",
+                          "Harapan pada Pemuda", "Kepercayaan pada Pemerintah"]
 
     keywords_shared = {
         "Narkoba / Zat Berbahaya": ["narkoba", "aibon", "ganja", "mabuk", "miras"],
@@ -837,7 +927,6 @@ with tab3:
         "Konflik Lahan / Adat": ["tanah", "lahan", "adat", "ulayat", "sengketa"],
         "Harapan pada Pemuda": ["pemuda", "generasi", "kontribusi", "berkontribusi"],
         "Kepercayaan pada Pemerintah": ["pemerintah", "bupati", "dinas", "aparat"],
-        "Bencana Alam & Lingkungan": ["bencana", "banjir", "gempa", "longsor", "kekeringan", "cuaca", "iklim"]
     }
 
     scores_k, scores_kii = [], []
@@ -848,6 +937,7 @@ with tab3:
         scores_k.append(sc_k)
         scores_kii.append(sc_kii)
 
+    # Normalize 0-10
     max_k = max(scores_k) if max(scores_k) > 0 else 1
     max_kii = max(scores_kii) if max(scores_kii) > 0 else 1
     norm_k = [round(x / max_k * 10, 1) for x in scores_k]
@@ -876,7 +966,7 @@ with tab3:
 
     st.divider()
 
-    # Table & Executive Summary
+    # ── Tabel Perbandingan ──
     st.markdown("### 📋 Ringkasan Perbandingan Isu per Wilayah")
     comparison_data = {
         "Wilayah": ["Jayawijaya", "Asmat (Papua Selatan)", "Sentani"],
@@ -887,7 +977,7 @@ with tab3:
         ],
         "Isu Utama KII": [
             "Nepotisme birokrasi, kesenjangan OAP vs pendatang, potensi eskalasi politik",
-            "Hak adat terancam PSN/deforestasi, krisis pangan lokal akibat cuaca/perubahan ekosistem",
+            "Hak adat terancam PSN/deforestasi, distribusi bantuan tidak transparan, trauma sosial",
             "Narkoba & aibon pada anak, HIV anak SD, keterbatasan fasilitas rehabilitasi",
         ],
         "Titik Konvergensi": [
@@ -906,6 +996,101 @@ with tab3:
 
     st.divider()
 
+    # ── LAPORAN EKSEKUTIF ──
+    st.markdown("### 📄 Laporan Eksekutif")
+    st.markdown("""
+    <div style="background:white; border-radius:14px; padding:32px 36px; 
+                box-shadow:0 2px 12px rgba(0,0,0,0.07); line-height:1.8;">
+    
+    <h2 style="font-family:Sora,sans-serif; color:#1a1a2e; border-bottom:3px solid #c0392b; 
+               padding-bottom:12px; margin-bottom:24px;">
+        Laporan Eksekutif: Analisis Isu GECAR Papua
+    </h2>
+    
+    <h3 style="color:#c0392b; font-family:Sora,sans-serif;">1. Lingkaran Setan: Zat Berbahaya → Kriminalitas → Kemiskinan</h3>
+    <p>Isu yang paling konsisten muncul dari seluruh wilayah—baik di perspektif masyarakat maupun KII—adalah 
+    penyalahgunaan zat berbahaya (miras/mabuk, aibon, ganja, narkoba) sebagai pemicu kriminalitas dan kekerasan. 
+    Di Jayawijaya, miras menjadi awal dari perang suku dan begal. Di Sentani, Dinas Sosial menemukan anak SD 
+    terinfeksi HIV yang diduga akibat kekerasan seksual dipicu alkohol/narkoba. Di Asmat, orang yang mabuk 
+    saat dana bantuan cair langsung memicu keributan. Rantai ini menciptakan lingkaran setan: kemiskinan 
+    mendorong konsumsi zat, zat mendorong kriminalitas, kriminalitas memperburuk kemiskinan komunitas.</p>
+    
+    <h3 style="color:#c0392b; font-family:Sora,sans-serif;">2. Krisis Kepercayaan pada Pemerintah Kampung & Ketidakadilan Distribusi</h3>
+    <p>Baik masyarakat maupun KII mengidentifikasi krisis tata kelola di tingkat kampung sebagai isu krusial. 
+    Kepala kampung Asmat dideskripsikan sebagai "anti masyarakat"—bantuan dipotong di distrik dan kampung, 
+    musrenbang diabaikan, dan pengadaan hanya untuk simpatisan politik. Kepala kampung Birak bahkan meminta 
+    langsung dipilih oleh bupati (bukan oleh masyarakat). KII menyebut ini "nepotisme birokrasi yang 
+    memperkuat ketidakpercayaan." Situasi ini menimbulkan paradoks: masyarakat butuh bantuan pemerintah 
+    tetapi tidak percaya pada mekanisme distribusinya.</p>
+    
+    <h3 style="color:#c0392b; font-family:Sora,sans-serif;">3. Anak-Anak sebagai Kelompok Paling Rentan dengan Paparan Multidimensi</h3>
+    <p>KII dan masyarakat sepakat: anak-anak adalah kelompok paling rentan. Di Jayawijaya, anak usia 10 tahun 
+    sudah diajak perang suku dan memegang senjata tajam—membentuk mentalitas "ketagihan perang seperti main bola." 
+    Di Sentani, 5 dari 9 anak perempuan yang disurvei menyebut kekerasan fisik dari ayah sebagai ketakutan utama. 
+    Di Asmat, anak-anak menggunakan aibon di jalanan. Kondisi ini menegaskan kebutuhan mendesak untuk 
+    program perlindungan anak yang komprehensif—bukan sekadar pendidikan formal.</p>
+    
+    <h3 style="color:#c0392b; font-family:Sora,sans-serif;">4. Hak Adat & Lahan Terancam Proyek Pembangunan</h3>
+    <p>Khusus di Asmat, KII mengidentifikasi ancaman baru yang serius: Proyek Strategis Nasional (PSN) Pangan 
+    yang berjalan tanpa AMDAL transparan dan persetujuan adat telah memicu deforestasi masif, menghancurkan 
+    sumber pangan alami masyarakat adat Malind dan Yeinan. Sidang MPL PGI Februari 2026 menolak PSN ini. 
+    Paradoks "Tanah Kosong" vs. nilai sakral lahan adat adalah akar ketegangan yang belum terselesaikan dan 
+    berpotensi memicu konflik lebih besar dalam 6 bulan ke depan.</p>
+    
+    <h3 style="color:#c0392b; font-family:Sora,sans-serif;">5. Pemuda sebagai Aset Perdamaian yang Belum Dioptimalkan</h3>
+    <p>Di tengah kondisi yang penuh tekanan, masyarakat—khususnya anak muda—mengekspresikan harapan konkret 
+    dan keinginan berkontribusi: mengajar di rumah baca, aktif di gereja, ikut lomba seni dan budaya, 
+    berpartisipasi dalam gotong royong kampung. KII mendorong program "Pemuda Penggerak Damai" melalui 
+    seni/olahraga lintas latar belakang, pelatihan kapasitas, dan pembentukan Komite Damai. 
+    Hambatan utama adalah minimnya ruang publik, lapangan kerja, dan program terstruktur di kampung.</p>
+    
+    <h3 style="color:#1a1a2e; font-family:Sora,sans-serif; margin-top:28px;">Rekomendasi Prioritas</h3>
+    <table style="width:100%; border-collapse:collapse; font-size:0.88rem;">
+        <thead>
+            <tr style="background:#1a1a2e; color:white;">
+                <th style="padding:10px; text-align:left;">Prioritas</th>
+                <th style="padding:10px; text-align:left;">Intervensi</th>
+                <th style="padding:10px; text-align:left;">Wilayah Utama</th>
+                <th style="padding:10px; text-align:left;">Aktor Kunci</th>
+            </tr>
+        </thead>
+        <tbody>
+            <tr style="background:#fdf0ef;">
+                <td style="padding:10px; font-weight:700; color:#c0392b;">🔴 Kritis</td>
+                <td style="padding:10px;">Perlindungan anak dari kekerasan & penyalahgunaan zat (posko ramah anak, konseling trauma)</td>
+                <td style="padding:10px;">Sentani, Asmat</td>
+                <td style="padding:10px;">Dinas Sosial, BNN, WVI</td>
+            </tr>
+            <tr>
+                <td style="padding:10px; font-weight:700; color:#e67e22;">🟠 Mendesak</td>
+                <td style="padding:10px;">Advokasi transparansi dana kampung & mekanisme pengawasan distribusi bantuan</td>
+                <td style="padding:10px;">Asmat, Jayawijaya</td>
+                <td style="padding:10px;">Tokoh adat, LSM, BAMUSKAM</td>
+            </tr>
+            <tr style="background:#fefdf0;">
+                <td style="padding:10px; font-weight:700; color:#d4ac0d;">🟡 Penting</td>
+                <td style="padding:10px;">Pemetaan wilayah adat partisipatif & dialog PSN–masyarakat</td>
+                <td style="padding:10px;">Asmat</td>
+                <td style="padding:10px;">MRP Selatan, Gereja, WVI</td>
+            </tr>
+            <tr>
+                <td style="padding:10px; font-weight:700; color:#27ae60;">🟢 Strategis</td>
+                <td style="padding:10px;">Program Pemuda Penggerak Damai: olahraga, seni budaya, rumah baca, pelatihan</td>
+                <td style="padding:10px;">Semua wilayah</td>
+                <td style="padding:10px;">Gereja, kepala suku, WVI</td>
+            </tr>
+        </tbody>
+    </table>
+    
+    <p style="margin-top:24px; font-size:0.82rem; color:#888;">
+        <i>Laporan ini disusun berdasarkan analisis konten kualitatif dari 356 tanggapan Dataset Kelompok Masyarakat 
+        dan 296 tanggapan Dataset KII. Analisis menggunakan pendekatan keyword extraction berbasis tema isu.</i>
+    </p>
+    </div>
+    """, unsafe_allow_html=True)
+
+    st.divider()
+
     # Raw Data Explorer
     with st.expander("🔎 Eksplorasi Data Mentah"):
         tab_raw1, tab_raw2 = st.tabs(["Dataset Kelompok", "Dataset KII"])
@@ -914,8 +1099,10 @@ with tab3:
             df_show = dfk if q_filter == "(Semua)" else dfk[dfk["Pertanyaan"] == q_filter]
             st.dataframe(df_show[["Wilayah", "Kelompok_Usia", "Jenis_Kelamin", "Pertanyaan", "Tanggapan"]],
                          width="stretch", hide_index=True)
+            st.caption(f"{len(df_show)} baris ditampilkan")
         with tab_raw2:
             q_filter2 = st.selectbox("Filter Pertanyaan:", ["(Semua)"] + sorted(dfkii["Pertanyaan"].unique().tolist()), key="q2")
             df_show2 = dfkii if q_filter2 == "(Semua)" else dfkii[dfkii["Pertanyaan"] == q_filter2]
             st.dataframe(df_show2[["Wilayah", "Narsum", "Pertanyaan", "Tanggapan"]],
                          width="stretch", hide_index=True)
+            st.caption(f"{len(df_show2)} baris ditampilkan")
