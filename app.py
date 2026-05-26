@@ -9,7 +9,6 @@ import streamlit as st
 import pandas as pd
 import plotly.express as px
 import plotly.graph_objects as go
-from plotly.subplots import make_subplots
 import os
 
 # ─────────────────────────────────────────────
@@ -363,7 +362,7 @@ with tab1:
         df_tension = df_tension[df_tension["Jumlah"] > 0]
         if not df_tension.empty:
             fig = bar_chart(df_tension, "Tema", "Jumlah", "Frekuensi Sebutan Jenis Ketegangan", orientation="h")
-            st.plotly_chart(fig, use_container_width=True)
+            st.plotly_chart(fig, width="stretch")
 
     with col_t2:
         # Per wilayah breakdown untuk ketegangan
@@ -386,7 +385,7 @@ with tab1:
                 legend=dict(font=dict(size=10)),
                 margin=dict(t=50, b=20)
             )
-            st.plotly_chart(fig2, use_container_width=True)
+            st.plotly_chart(fig2, width="stretch")
 
     # Quotes
     st.markdown("**Kutipan Langsung dari Tanggapan Masyarakat:**")
@@ -433,7 +432,7 @@ with tab1:
             wlabel = wilayah.split(",")[0]
             if not df_n.empty:
                 fig = pie_chart(df_n, "Tema", "Jumlah", f"Kebutuhan Utama – {wlabel}")
-                st.plotly_chart(fig, use_container_width=True)
+                st.plotly_chart(fig, width="stretch")
 
     st.divider()
 
@@ -481,7 +480,7 @@ with tab1:
                 title_font=dict(family="Sora", size=14),
                 xaxis_tickangle=-30, margin=dict(t=50, b=80)
             )
-            st.plotly_chart(fig, use_container_width=True)
+            st.plotly_chart(fig, width="stretch")
 
     with col_v2:
         st.markdown("**Kutipan Anak Perempuan Sentani:**")
@@ -530,7 +529,7 @@ with tab1:
         df_hope_all = df_hope_all[df_hope_all["Jumlah"] > 0]
         if not df_hope_all.empty:
             fig = bar_chart(df_hope_all, "Tema", "Jumlah", "Tema Harapan Masyarakat", orientation="h")
-            st.plotly_chart(fig, use_container_width=True)
+            st.plotly_chart(fig, width="stretch")
 
     with col_h2:
         df_hope_w = []
@@ -551,7 +550,7 @@ with tab1:
                 title_font=dict(family="Sora", size=14),
                 margin=dict(t=50, b=20)
             )
-            st.plotly_chart(fig2, use_container_width=True)
+            st.plotly_chart(fig2, width="stretch")
 
     st.divider()
 
@@ -590,7 +589,7 @@ with tab1:
             title_font=dict(family="Sora", size=14),
             legend=dict(orientation="h", y=1.1), margin=dict(t=60, b=20)
         )
-        st.plotly_chart(fig_sc, use_container_width=True)
+        st.plotly_chart(fig_sc, width="stretch")
 
     with col_s2:
         st.markdown("**Kutipan Proyeksi Masyarakat:**")
@@ -640,13 +639,16 @@ with tab2:
         df_tkii = df_tkii[df_tkii["Jumlah"] > 0]
         if not df_tkii.empty:
             fig = bar_chart(df_tkii, "Tema", "Jumlah", "Frekuensi Sebutan Akar Ketegangan – KII", orientation="h")
-            st.plotly_chart(fig, use_container_width=True)
+            st.plotly_chart(fig, width="stretch")
 
     with col_k2:
         # Ketegangan per wilayah KII
+        # Gunakan df_kii (data asli, sebelum filter) agar semua wilayah selalu muncul,
+        # lalu terapkan filter Narsum saja agar chart konsisten dengan sidebar
         df_tkii_w = []
-        for w in dfkii["Wilayah"].unique():
-            sub = dfkii[dfkii["Wilayah"] == w]["Tanggapan"]
+        base_kii = df_kii[df_kii["Narsum"].isin(sel_narsum)]  # hanya filter narsum, bukan wilayah
+        for w in sorted(df_kii["Wilayah"].unique()):           # iterasi SEMUA wilayah dari data asli
+            sub = base_kii[base_kii["Wilayah"] == w]["Tanggapan"]
             for label, kws in tension_kii_kws.items():
                 pattern = "|".join(kws)
                 cnt = sub.str.lower().str.contains(pattern, na=False).sum()
@@ -654,16 +656,22 @@ with tab2:
                     df_tkii_w.append({"Wilayah": w, "Isu": label, "Jumlah": cnt})
         df_tkii_w = pd.DataFrame(df_tkii_w)
         if not df_tkii_w.empty:
+            # Urutkan wilayah agar tampil konsisten: Asmat, Jayawijaya, Sentani
+            wilayah_order = sorted(df_kii["Wilayah"].unique().tolist())
+            df_tkii_w["Wilayah"] = pd.Categorical(df_tkii_w["Wilayah"], categories=wilayah_order, ordered=True)
+            df_tkii_w = df_tkii_w.sort_values("Wilayah")
             fig2 = px.bar(df_tkii_w, x="Wilayah", y="Jumlah", color="Isu", barmode="stack",
-                          title="Isu per Wilayah – Perspektif KII",
-                          color_discrete_sequence=COLORS_MAIN)
+                          title="Isu per Wilayah – Perspektif KII (Semua Wilayah)",
+                          color_discrete_sequence=COLORS_MAIN,
+                          category_orders={"Wilayah": wilayah_order})
             fig2.update_layout(
                 plot_bgcolor="white", paper_bgcolor="white",
                 font=dict(family="Plus Jakarta Sans", size=11),
                 title_font=dict(family="Sora", size=14),
-                margin=dict(t=50, b=20)
+                margin=dict(t=50, b=20),
+                legend=dict(font=dict(size=9), orientation="v"),
             )
-            st.plotly_chart(fig2, use_container_width=True)
+            st.plotly_chart(fig2, width="stretch")
 
     st.markdown("**Kutipan KII – Akar Ketegangan:**")
     kii_q1 = [
@@ -708,7 +716,7 @@ with tab2:
         df_vuln_kii = df_vuln_kii[df_vuln_kii["Jumlah"] > 0]
         if not df_vuln_kii.empty:
             fig = pie_chart(df_vuln_kii, "Tema", "Jumlah", "Komposisi Kelompok Rentan – Perspektif KII")
-            st.plotly_chart(fig, use_container_width=True)
+            st.plotly_chart(fig, width="stretch")
 
     with col_v2:
         st.markdown("**Gambaran Dampak per Kelompok Rentan:**")
@@ -722,7 +730,7 @@ with tab2:
                 "Rentan penyalahgunaan narkoba & aibon, putus sekolah",
             ]
         }
-        st.dataframe(pd.DataFrame(vuln_data), use_container_width=True, hide_index=True)
+        st.dataframe(pd.DataFrame(vuln_data), width="stretch", hide_index=True)
 
         st.markdown('<div class="alert-red">🚨 Dinas Sosial Sentani: Ditemukan anak SD terinfeksi HIV, diduga karena kekerasan seksual yang dipicu alkohol/narkoba.</div>', unsafe_allow_html=True)
         st.markdown('<div class="alert-yellow">⚠️ Jayawijaya: Anak usia 10 tahun sudah diajak perang suku dan memegang senjata tajam.</div>', unsafe_allow_html=True)
@@ -766,7 +774,7 @@ with tab2:
             title_font=dict(family="Sora", size=14),
             margin=dict(t=60, b=20)
         )
-        st.plotly_chart(fig_actors, use_container_width=True)
+        st.plotly_chart(fig_actors, width="stretch")
 
     with col_a2:
         st.markdown("**Pandangan Masyarakat terhadap Aktor:**")
@@ -812,7 +820,7 @@ with tab2:
     with col_p1:
         if not df_peace.empty:
             fig = bar_chart(df_peace, "Tema", "Jumlah", "Tema Rekomendasi Pembinaan Perdamaian – KII")
-            st.plotly_chart(fig, use_container_width=True)
+            st.plotly_chart(fig, width="stretch")
 
     with col_p2:
         # Per narsum breakdown
@@ -835,7 +843,7 @@ with tab2:
                 title_font=dict(family="Sora", size=14),
                 margin=dict(t=50, b=20)
             )
-            st.plotly_chart(fig2, use_container_width=True)
+            st.plotly_chart(fig2, width="stretch")
 
     st.divider()
 
@@ -883,7 +891,7 @@ with tab2:
                 title_font=dict(family="Sora", size=14),
                 margin=dict(t=50, b=20, l=200, r=60)
             )
-            st.plotly_chart(fig_sc2, use_container_width=True)
+            st.plotly_chart(fig_sc2, width="stretch")
 
     with col_sc2:
         st.markdown("**Kutipan KII – Proyeksi & Rekomendasi:**")
@@ -954,7 +962,7 @@ with tab3:
         title_font=dict(family="Sora", size=15),
         margin=dict(t=60, b=40)
     )
-    st.plotly_chart(fig_radar, use_container_width=True)
+    st.plotly_chart(fig_radar, width="stretch")
 
     st.divider()
 
@@ -984,7 +992,7 @@ with tab3:
         ]
     }
     df_compare = pd.DataFrame(comparison_data)
-    st.dataframe(df_compare, use_container_width=True, hide_index=True)
+    st.dataframe(df_compare, width="stretch", hide_index=True)
 
     st.divider()
 
@@ -1090,11 +1098,11 @@ with tab3:
             q_filter = st.selectbox("Filter Pertanyaan:", ["(Semua)"] + sorted(dfk["Pertanyaan"].unique().tolist()), key="q1")
             df_show = dfk if q_filter == "(Semua)" else dfk[dfk["Pertanyaan"] == q_filter]
             st.dataframe(df_show[["Wilayah", "Kelompok_Usia", "Jenis_Kelamin", "Pertanyaan", "Tanggapan"]],
-                         use_container_width=True, hide_index=True)
+                         width="stretch", hide_index=True)
             st.caption(f"{len(df_show)} baris ditampilkan")
         with tab_raw2:
             q_filter2 = st.selectbox("Filter Pertanyaan:", ["(Semua)"] + sorted(dfkii["Pertanyaan"].unique().tolist()), key="q2")
             df_show2 = dfkii if q_filter2 == "(Semua)" else dfkii[dfkii["Pertanyaan"] == q_filter2]
             st.dataframe(df_show2[["Wilayah", "Narsum", "Pertanyaan", "Tanggapan"]],
-                         use_container_width=True, hide_index=True)
+                         width="stretch", hide_index=True)
             st.caption(f"{len(df_show2)} baris ditampilkan")
