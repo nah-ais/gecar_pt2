@@ -1,995 +1,1100 @@
 """
-GECAR Dashboard — Analisis Tanggapan Masyarakat & Narasumber Pemerintah
-Versi 2: Tema terang & kontras tinggi untuk keterbacaan maksimal
+GECAR Dashboard - Analisis Isu Komunitas Papua
+Streamlit App v1.0
+Run: streamlit run app.py
+Requires: streamlit, pandas, plotly
 """
 
 import streamlit as st
 import pandas as pd
 import plotly.express as px
 import plotly.graph_objects as go
-import re
+from plotly.subplots import make_subplots
+import os
 
-# ──────────────────────────────────────────────────────────────────────
-# PAGE CONFIG
-# ──────────────────────────────────────────────────────────────────────
+# ─────────────────────────────────────────────
+# CONFIG
+# ─────────────────────────────────────────────
 st.set_page_config(
-    page_title="GECAR | Dashboard Analisis Isu Papua",
+    page_title="GECAR Dashboard – Analisis Isu Komunitas Papua",
     page_icon="🗺️",
     layout="wide",
     initial_sidebar_state="expanded",
 )
 
-# ──────────────────────────────────────────────────────────────────────
-# DESIGN SYSTEM — terang, kontras tinggi, mudah dibaca
-# ──────────────────────────────────────────────────────────────────────
+# ─────────────────────────────────────────────
+# CUSTOM CSS
+# ─────────────────────────────────────────────
 st.markdown("""
 <style>
-  @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Lora:wght@400;600&display=swap');
-
-  /* ── Global ── */
-  html, body, [data-testid="stAppViewContainer"] {
-    background: #F5F7FA !important;
-    font-family: 'Plus Jakarta Sans', sans-serif;
-  }
-
-  /* ── Sidebar ── */
-  [data-testid="stSidebar"] {
-    background: #1B2A4A !important;
-    border-right: 3px solid #2E4070;
-  }
-  [data-testid="stSidebar"] * { color: #E8EDF5 !important; }
-  [data-testid="stSidebar"] .stSelectbox label,
-  [data-testid="stSidebar"] .stMultiSelect label {
-    color: #A8B8D0 !important;
-    font-size: 0.78rem !important;
-    letter-spacing: 0.05em;
-    text-transform: uppercase;
-  }
-  [data-testid="stSidebar"] [data-baseweb="select"] > div {
-    background: #253559 !important;
-    border-color: #3A5080 !important;
-    color: #E8EDF5 !important;
-  }
-
-  /* ── Metric cards ── */
-  [data-testid="stMetric"] {
-    background: #FFFFFF !important;
-    border-radius: 14px !important;
-    padding: 20px 24px !important;
-    border: 1px solid #E2E8F0;
-    border-top: 4px solid #E63946 !important;
-    box-shadow: 0 2px 12px rgba(0,0,0,0.06);
-  }
-  [data-testid="stMetricValue"] {
-    font-size: 1.9rem !important;
-    font-weight: 800 !important;
-    color: #1B2A4A !important;
-    font-family: 'Plus Jakarta Sans', sans-serif !important;
-  }
-  [data-testid="stMetricLabel"] {
-    font-size: 0.78rem !important;
-    color: #64748B !important;
-    font-weight: 600 !important;
-    text-transform: uppercase;
-    letter-spacing: 0.04em;
-  }
-
-  /* ── Section headers ── */
-  .sec-hdr {
-    background: #1B2A4A;
-    color: #FFFFFF;
-    padding: 13px 22px;
-    border-radius: 10px;
-    margin: 22px 0 14px 0;
-    font-size: 0.97rem;
-    font-weight: 700;
-    letter-spacing: 0.02em;
-    display: flex;
-    align-items: center;
-    gap: 10px;
-  }
-
-  /* ── Issue / insight cards ── */
-  .icard {
-    background: #FFFFFF;
-    border-radius: 12px;
-    padding: 18px 22px;
-    margin: 10px 0;
-    border: 1px solid #E2E8F0;
-    border-left: 5px solid #E63946;
-    box-shadow: 0 1px 6px rgba(0,0,0,0.05);
-    color: #1E293B;
-    font-size: 0.9rem;
-    line-height: 1.7;
-  }
-  .icard b { color: #1B2A4A; font-size: 0.95rem; }
-  .icard-blue  { border-left-color: #2563EB; }
-  .icard-orange{ border-left-color: #EA6C00; }
-  .icard-green { border-left-color: #16A34A; }
-  .icard-purple{ border-left-color: #7C3AED; }
-
-  /* ── Quote boxes ── */
-  .qbox {
-    background: #F0F5FF;
-    border-left: 4px solid #2563EB;
-    padding: 13px 18px;
-    border-radius: 8px;
-    font-style: italic;
-    color: #1E3A5F;
-    font-size: 0.87rem;
-    line-height: 1.65;
-    margin: 7px 0;
-  }
-  .qbox small { font-style: normal; color: #4A6FA5; font-weight: 600; font-size: 0.75rem; }
-
-  .qbox-orange { background: #FFF5EB; border-left-color: #EA6C00; color: #4A2800; }
-  .qbox-orange small { color: #9A4500; }
-  .qbox-green  { background: #F0FAF4; border-left-color: #16A34A; color: #14532D; }
-  .qbox-green  small { color: #166534; }
-
-  /* ── Tabs ── */
-  .stTabs [data-baseweb="tab-list"] {
-    background: #E8EEF8;
-    border-radius: 12px;
-    padding: 5px;
-    gap: 4px;
-  }
-  .stTabs [data-baseweb="tab"] {
-    border-radius: 9px;
-    font-weight: 600;
-    font-size: 0.88rem;
-    color: #1B2A4A;
-    padding: 9px 20px;
-  }
-  .stTabs [aria-selected="true"] {
-    background: #1B2A4A !important;
-    color: #FFFFFF !important;
-  }
-
-  /* ── Divider ── */
-  hr { border: none; border-top: 2px solid #E2E8F0; margin: 22px 0; }
-
-  /* ── Expander ── */
-  .st-expander { background: #FFFFFF; border: 1px solid #E2E8F0; border-radius: 10px; }
+    @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;700&family=Sora:wght@300;400;700&display=swap');
+    
+    html, body, [class*="css"] { font-family: 'Plus Jakarta Sans', sans-serif; }
+    h1, h2, h3 { font-family: 'Sora', sans-serif; }
+    
+    .main { background-color: #f8f7f4; }
+    
+    .metric-card {
+        background: white;
+        border-radius: 12px;
+        padding: 20px 24px;
+        border-left: 4px solid #c0392b;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+        margin-bottom: 12px;
+    }
+    .metric-label { font-size: 0.78rem; color: #888; font-weight: 600; letter-spacing: 0.05em; text-transform: uppercase; }
+    .metric-value { font-size: 2rem; font-weight: 700; color: #1a1a2e; line-height: 1.2; }
+    .metric-delta { font-size: 0.8rem; color: #27ae60; font-weight: 600; }
+    
+    .issue-card {
+        background: white;
+        border-radius: 10px;
+        padding: 16px 20px;
+        margin-bottom: 10px;
+        border-top: 3px solid #e74c3c;
+        box-shadow: 0 1px 4px rgba(0,0,0,0.05);
+    }
+    .issue-title { font-weight: 700; font-size: 0.95rem; color: #2c3e50; margin-bottom: 6px; }
+    .issue-desc { font-size: 0.85rem; color: #555; line-height: 1.6; }
+    
+    .section-header {
+        background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+        color: white;
+        padding: 16px 24px;
+        border-radius: 10px;
+        margin-bottom: 20px;
+        font-family: 'Sora', sans-serif;
+        font-weight: 700;
+    }
+    
+    .quote-box {
+        background: #fef9f0;
+        border-left: 3px solid #f39c12;
+        padding: 12px 16px;
+        border-radius: 0 8px 8px 0;
+        font-style: italic;
+        font-size: 0.85rem;
+        color: #444;
+        margin: 8px 0;
+        line-height: 1.6;
+    }
+    
+    .tag {
+        display: inline-block;
+        background: #e8f4fd;
+        color: #2980b9;
+        border-radius: 20px;
+        padding: 2px 10px;
+        font-size: 0.75rem;
+        font-weight: 600;
+        margin: 2px;
+    }
+    
+    .stTabs [data-baseweb="tab-list"] { gap: 8px; }
+    .stTabs [data-baseweb="tab"] {
+        background: white;
+        border-radius: 8px 8px 0 0;
+        padding: 10px 20px;
+        font-weight: 600;
+        font-size: 0.9rem;
+    }
+    .stTabs [aria-selected="true"] {
+        background: #1a1a2e !important;
+        color: white !important;
+    }
+    
+    div[data-testid="stSidebar"] { background: #1a1a2e; }
+    div[data-testid="stSidebar"] * { color: white !important; }
+    div[data-testid="stSidebar"] .stSelectbox label,
+    div[data-testid="stSidebar"] .stMultiSelect label { color: #aaa !important; }
+    
+    .alert-red {
+        background: #fdf0ef;
+        border: 1px solid #e74c3c;
+        border-radius: 8px;
+        padding: 12px 16px;
+        color: #c0392b;
+        font-size: 0.85rem;
+        font-weight: 600;
+    }
+    .alert-yellow {
+        background: #fefdf0;
+        border: 1px solid #f39c12;
+        border-radius: 8px;
+        padding: 12px 16px;
+        color: #d68910;
+        font-size: 0.85rem;
+        font-weight: 600;
+    }
 </style>
 """, unsafe_allow_html=True)
 
-# ──────────────────────────────────────────────────────────────────────
-# PLOTLY BASE TEMPLATE — latar putih, kontras tinggi
-# ──────────────────────────────────────────────────────────────────────
-PLOT_LAYOUT = dict(
-    paper_bgcolor="#FFFFFF",
-    plot_bgcolor="#F8FAFC",
-    font=dict(family="Plus Jakarta Sans, sans-serif", color="#1E293B", size=12),
-    title_font=dict(color="#1B2A4A", size=14, family="Plus Jakarta Sans, sans-serif"),
-    xaxis=dict(gridcolor="#E2E8F0", linecolor="#CBD5E1", tickcolor="#64748B",
-               tickfont=dict(color="#334155", size=11)),
-    yaxis=dict(gridcolor="#E2E8F0", linecolor="#CBD5E1", tickcolor="#64748B",
-               tickfont=dict(color="#334155", size=11)),
-    legend=dict(bgcolor="rgba(255,255,255,0.9)", bordercolor="#E2E8F0",
-                borderwidth=1, font=dict(color="#334155", size=11)),
-    margin=dict(l=10, r=20, t=50, b=10),
-)
 
-# Palet warna — tinggi kontras, terbaca di latar putih
-C_MAIN   = ["#1B2A4A","#E63946","#2563EB","#EA6C00","#16A34A","#7C3AED","#0891B2","#CA8A04","#9F1239","#065F46"]
-C_BLUE   = ["#DBEAFE","#93C5FD","#3B82F6","#1D4ED8","#1E3A8A"]
-C_RED    = ["#FEE2E2","#FCA5A5","#EF4444","#DC2626","#991B1B"]
-C_GREEN  = ["#DCFCE7","#86EFAC","#22C55E","#16A34A","#14532D"]
-C_ORANGE = ["#FFF7ED","#FED7AA","#FB923C","#EA580C","#7C2D12"]
-C_NAVY   = ["#EFF6FF","#BFDBFE","#60A5FA","#2563EB","#1E40AF"]
-C_SEQ_RD = "Reds"
-C_SEQ_BL = "Blues"
-C_SEQ_GN = "Greens"
-C_SEQ_OR = "Oranges"
-
-def bar_h(df, x, y, title, color_scale=C_RED, text=True):
-    """Horizontal bar chart helper."""
-    fig = px.bar(
-        df, x=x, y=y, orientation="h",
-        color=x, color_continuous_scale=color_scale,
-        title=title, text=x if text else None,
-    )
-    fig.update_traces(textposition="outside", textfont=dict(color="#1B2A4A", size=11))
-    fig.update_coloraxes(showscale=False)
-    fig.update_layout(**PLOT_LAYOUT, height=370,
-                      yaxis=dict(autorange="reversed", **PLOT_LAYOUT["yaxis"]))
-    return fig
-
-def bar_v(df, x, y, title, color=None, color_map=None):
-    """Vertical bar chart helper."""
-    kwargs = dict(x=x, y=y, title=title, text=y)
-    if color:
-        kwargs["color"] = color
-    if color_map:
-        kwargs["color_discrete_map"] = color_map
-    elif color:
-        kwargs["color_discrete_sequence"] = C_MAIN
-    else:
-        kwargs["color_discrete_sequence"] = [C_MAIN[0]]
-    fig = px.bar(df, **kwargs)
-    fig.update_traces(textposition="outside", textfont=dict(color="#1B2A4A", size=11))
-    fig.update_layout(**PLOT_LAYOUT, height=360, xaxis_tickangle=-25)
-    return fig
-
-# ──────────────────────────────────────────────────────────────────────
+# ─────────────────────────────────────────────
 # DATA LOADING
-# ──────────────────────────────────────────────────────────────────────
-@st.cache_data(show_spinner="Memuat data…")
+# ─────────────────────────────────────────────
+@st.cache_data
 def load_data():
-    import os
-    paths = [
-        ("Gecar_-_Kelompok.csv", "Gecar_-_KII.csv"),
-        ("/mnt/user-data/uploads/Gecar_-_Kelompok.csv", "/mnt/user-data/uploads/Gecar_-_KII.csv"),
-    ]
-    for p1, p2 in paths:
-        if os.path.exists(p1) and os.path.exists(p2):
-            return pd.read_csv(p1), pd.read_csv(p2)
-    st.error("❌ File CSV tidak ditemukan. Pastikan kedua file CSV ada di folder yang sama.")
-    st.stop()
+    """Load both datasets. Adjust paths as needed."""
+    base_dir = os.path.dirname(os.path.abspath(__file__))
+    
+    kelompok_path = os.path.join(base_dir, "Gecar_-_Kelompok.csv")
+    kii_path      = os.path.join(base_dir, "Gecar_-_KII.csv")
+    
+    try:
+        df_k = pd.read_csv(kelompok_path)
+    except FileNotFoundError:
+        st.error(f"File tidak ditemukan: {kelompok_path}")
+        st.stop()
 
-df_k, df_i = load_data()
+    try:
+        df_kii = pd.read_csv(kii_path)
+    except FileNotFoundError:
+        st.error(f"File tidak ditemukan: {kii_path}")
+        st.stop()
 
-# ──────────────────────────────────────────────────────────────────────
-# THEMATIC CLASSIFICATION
-# ──────────────────────────────────────────────────────────────────────
-THEMES_K = {
-    "Kekerasan & Konflik":          ["perang suku","perang","konflik","kekerasan","miras","parang",
-                                     "mabok","mabuk","ancaman","bentrok","begal","sajam","dipukul",
-                                     "pukul","berkelahi","saling serang","pembunuhan"],
-    "Narkoba & Zat Berbahaya":      ["aibon","narkoba","ganja","kecanduan","zat","hiv","aids","alkohol"],
-    "Pendidikan":                   ["sekolah","belajar","guru","pendidikan","pelajar","paud",
-                                     "rumah baca","kuliah","ijazah","les ","ekstrakurikuler","buku"],
-    "Ekonomi & Kemiskinan":         ["ekonomi","miskin","pekerjaan","kerja","dana","bantuan","blt",
-                                     "uang","harga","inflasi","pangan","sembako","logistik","usaha",
-                                     "modal","ternak","kebun","karaka","ikan","bensin","keramba"],
-    "Korupsi & Ketidakadilan":      ["dipotong","tidak adil","memihak","kepala kampung",
-                                     "anti masyarakat","dicoret","oknum","tidak merata","tidak dapat",
-                                     "nepotisme","timses","pinjam","hutang"],
-    "Keamanan Lingkungan":          ["aman","keamanan","polisi","palang","linmas","pencurian","helm"],
-    "Keluarga & Sosial":            ["orang tua","keluarga","mama","papa","bapa","adik","kakak",
-                                     "nenek","broken home","suami","istri","perselingkuhan"],
-    "Harapan & Kontribusi Pemuda":  ["harapan","berkontribusi","masa depan","cita","semangat",
-                                     "kontribusi","motivasi","berubah jadi lebih baik","lomba"],
-}
+    # Basic cleaning
+    df_k = df_k.dropna(subset=["Tanggapan"])
+    df_kii = df_kii.dropna(subset=["Tanggapan"])
+    df_k["Tanggapan"] = df_k["Tanggapan"].str.strip()
+    df_kii["Tanggapan"] = df_kii["Tanggapan"].str.strip()
 
-THEMES_I = {
-    "Konflik Bersenjata & Separatisme": ["bersenjata","egianus","papua merdeka","separatis",
-                                          "tni","polri","nduga","militer","penyanderaan","pilot susi"],
-    "Krisis Pangan & Inflasi":          ["pangan","inflasi","logistik","sembako","harga",
-                                          "krisis","bps","sandang","papan","udara","transportasi"],
-    "Narkoba & HIV Anak":               ["narkoba","aibon","hiv","aids","rehabilitasi","bnn",
-                                          "narkotika","mantan pengguna"],
-    "Kualitas Pendidikan":              ["guru","paud","honor","mengajar","kurikulum",
-                                          "panggilan","bangunan","gedung sekolah","apbd","bup"],
-    "Konflik Lahan & PSN":              ["lahan","psn","food estate","penggusuran","deforestasi",
-                                          "tanah adat","ulayat","gambut","rawa","tebu","korporasi"],
-    "Diskriminasi OAP vs Pendatang":    ["oap","pendatang","orang asli papua","dikotomi",
-                                          "diskriminasi","pns","kuota","polarisasi","identitas"],
-    "Perlindungan Anak & Perempuan":    ["anak","remaja","perempuan","rentan","trauma",
-                                          "kekerasan seksual","perlindungan","putus sekolah"],
-    "Tata Kelola & Korupsi":            ["tidak transparan","nepotisme","oknum","keuangan",
-                                          "distribusi tidak adil","korupsi","anggaran","pejabat"],
-}
+    return df_k, df_kii
 
-def classify(text, themes):
-    t = str(text).lower()
-    found = [theme for theme, kws in themes.items()
-             if any(re.search(r'\b' + re.escape(kw) + r'\b', t) or kw in t for kw in kws)]
-    return found if found else ["Kehidupan Sehari-hari & Lainnya"]
 
-df_k["Tema_List"] = df_k["Tanggapan"].apply(lambda x: classify(x, THEMES_K))
-df_i["Tema_List"] = df_i["Tanggapan"].apply(lambda x: classify(x, THEMES_I))
-dfk_ = df_k.explode("Tema_List")
-dfi_ = df_i.explode("Tema_List")
+# ─────────────────────────────────────────────
+# KEYWORD EXTRACTION HELPERS
+# ─────────────────────────────────────────────
+def count_keyword_hits(series, keyword_groups: dict) -> pd.DataFrame:
+    """
+    Count how many rows mention each keyword group.
+    keyword_groups = {'Label': ['kw1','kw2'], ...}
+    Returns DataFrame with columns: Tema, Jumlah
+    """
+    results = []
+    for label, keywords in keyword_groups.items():
+        pattern = "|".join(keywords)
+        count = series.str.lower().str.contains(pattern, na=False).sum()
+        results.append({"Tema": label, "Jumlah": count})
+    return pd.DataFrame(results).sort_values("Jumlah", ascending=False)
 
-# ──────────────────────────────────────────────────────────────────────
+
+def extract_top_keywords(series, keyword_groups: dict, wilayah_series=None, wilayah_filter=None):
+    """Filter by wilayah then count keyword hits."""
+    if wilayah_filter and wilayah_series is not None:
+        mask = wilayah_series.isin(wilayah_filter)
+        series = series[mask]
+    return count_keyword_hits(series, keyword_groups)
+
+
+# ─────────────────────────────────────────────
+# PLOT HELPERS
+# ─────────────────────────────────────────────
+COLORS_MAIN = ["#c0392b", "#e67e22", "#f1c40f", "#2ecc71", "#2980b9",
+                "#8e44ad", "#16a085", "#d35400", "#1abc9c", "#e74c3c"]
+
+def bar_chart(df, x, y, title, color_col=None, orientation="v"):
+    if orientation == "h":
+        fig = px.bar(df, x=y, y=x, orientation="h", title=title,
+                     color=color_col if color_col else y,
+                     color_discrete_sequence=COLORS_MAIN)
+        fig.update_traces(texttemplate="%{x}", textposition="outside")
+    else:
+        fig = px.bar(df, x=x, y=y, title=title,
+                     color=color_col if color_col else x,
+                     color_discrete_sequence=COLORS_MAIN)
+        fig.update_traces(texttemplate="%{y}", textposition="outside")
+    fig.update_layout(
+        plot_bgcolor="white", paper_bgcolor="white",
+        font=dict(family="Plus Jakarta Sans", size=12),
+        title_font=dict(family="Sora", size=15, color="#1a1a2e"),
+        showlegend=False, margin=dict(t=50, b=20, l=20, r=20),
+        xaxis=dict(showgrid=False), yaxis=dict(showgrid=True, gridcolor="#f0f0f0"),
+    )
+    return fig
+
+def pie_chart(df, names, values, title):
+    fig = px.pie(df, names=names, values=values, title=title,
+                 color_discrete_sequence=COLORS_MAIN, hole=0.4)
+    fig.update_traces(textinfo="percent+label", textfont_size=11)
+    fig.update_layout(
+        paper_bgcolor="white", font=dict(family="Plus Jakarta Sans"),
+        title_font=dict(family="Sora", size=15, color="#1a1a2e"),
+        margin=dict(t=50, b=10, l=10, r=10),
+    )
+    return fig
+
+
+# ─────────────────────────────────────────────
 # SIDEBAR
-# ──────────────────────────────────────────────────────────────────────
+# ─────────────────────────────────────────────
+df_k, df_kii = load_data()
+
 with st.sidebar:
     st.markdown("## 🗺️ GECAR Dashboard")
-    st.markdown("**Analisis Isu Sosial Papua 2024–2025**")
-    st.divider()
-    st.markdown("### 📍 Filter — Masyarakat")
-    wk_opts = ["Semua Wilayah"] + sorted(df_k["Wilayah"].dropna().unique().tolist())
-    sel_wk  = st.selectbox("Wilayah", wk_opts, key="wk")
-    uk_opts = ["Semua Usia"] + df_k["Kelompok_Usia"].dropna().unique().tolist()
-    sel_uk  = st.selectbox("Kelompok Usia", uk_opts)
-    gk_opts = ["Semua"] + df_k["Jenis_Kelamin"].dropna().unique().tolist()
-    sel_gk  = st.selectbox("Jenis Kelamin", gk_opts)
+    st.markdown("*Analisis Isu Komunitas Papua*")
+    st.markdown("---")
 
-    st.divider()
-    st.markdown("### 🏛️ Filter — KII")
-    wi_opts = ["Semua Wilayah"] + sorted(df_i["Wilayah"].dropna().unique().tolist())
-    sel_wi  = st.selectbox("Wilayah", wi_opts, key="wi")
-    ni_opts = ["Semua Narasumber"] + df_i["Narsum"].dropna().unique().tolist()
-    sel_ni  = st.selectbox("Narasumber", ni_opts)
+    st.markdown("### Filter Kelompok Masyarakat")
+    wilayah_options_k = sorted(df_k["Wilayah"].unique().tolist())
+    sel_wilayah_k = st.multiselect("Wilayah", wilayah_options_k, default=wilayah_options_k, key="wk")
+    sel_usia = st.multiselect("Kelompok Usia", sorted(df_k["Kelompok_Usia"].unique()), default=df_k["Kelompok_Usia"].unique().tolist())
+    sel_gender = st.multiselect("Jenis Kelamin", sorted(df_k["Jenis_Kelamin"].unique()), default=df_k["Jenis_Kelamin"].unique().tolist())
 
-    st.divider()
-    st.caption("GECAR | Data Papua 2024–2025")
+    st.markdown("---")
+    st.markdown("### Filter KII Pemerintah")
+    wilayah_options_kii = sorted(df_kii["Wilayah"].unique().tolist())
+    sel_wilayah_kii = st.multiselect("Wilayah KII", wilayah_options_kii, default=wilayah_options_kii, key="wkii")
+    narsum_options = sorted(df_kii["Narsum"].unique().tolist())
+    sel_narsum = st.multiselect("Narasumber", narsum_options, default=narsum_options)
 
-# ──────────────────────────────────────────────────────────────────────
-# FILTER HELPERS
-# ──────────────────────────────────────────────────────────────────────
-def fk(df):
-    d = df.copy()
-    if sel_wk != "Semua Wilayah": d = d[d["Wilayah"] == sel_wk]
-    if sel_uk != "Semua Usia":    d = d[d["Kelompok_Usia"] == sel_uk]
-    if sel_gk != "Semua":         d = d[d["Jenis_Kelamin"] == sel_gk]
-    return d
+    st.markdown("---")
+    st.caption("Data: Program GECAR | Dashboard v1.0")
 
-def fi(df):
-    d = df.copy()
-    if sel_wi != "Semua Wilayah":    d = d[d["Wilayah"] == sel_wi]
-    if sel_ni != "Semua Narasumber": d = d[d["Narsum"] == sel_ni]
-    return d
+# Apply filters
+mask_k = (
+    df_k["Wilayah"].isin(sel_wilayah_k) &
+    df_k["Kelompok_Usia"].isin(sel_usia) &
+    df_k["Jenis_Kelamin"].isin(sel_gender)
+)
+dfk = df_k[mask_k].copy()
 
-FK  = fk(df_k);  FK_ = fk(dfk_)
-FI  = fi(df_i);  FI_ = fi(dfi_)
+mask_kii = (
+    df_kii["Wilayah"].isin(sel_wilayah_kii) &
+    df_kii["Narsum"].isin(sel_narsum)
+)
+dfkii = df_kii[mask_kii].copy()
 
-# ──────────────────────────────────────────────────────────────────────
+
+# ─────────────────────────────────────────────
 # HEADER
-# ──────────────────────────────────────────────────────────────────────
+# ─────────────────────────────────────────────
 st.markdown("""
-<div style='background:#1B2A4A;padding:28px 36px;border-radius:16px;
-            color:#FFFFFF;margin-bottom:22px;border-bottom:4px solid #E63946;'>
-  <h1 style='margin:0;font-size:1.85rem;font-weight:800;letter-spacing:-0.02em;
-             font-family:"Plus Jakarta Sans",sans-serif;'>
-    🗺️ GECAR — Dashboard Analisis Isu Sosial Papua
+<div style="background:linear-gradient(135deg,#1a1a2e 0%,#c0392b 100%);
+            padding:32px 36px; border-radius:14px; margin-bottom:28px;">
+  <h1 style="color:white;margin:0;font-family:Sora,sans-serif;font-size:2rem;">
+    🗺️ GECAR – Dashboard Analisis Isu Komunitas Papua
   </h1>
-  <p style='margin:8px 0 0;color:#A8BDD8;font-size:0.92rem;font-family:"Plus Jakarta Sans",sans-serif;'>
-    Tanggapan Masyarakat (FGD) &amp; Narasumber Pemerintah (KII) ·
-    <strong style='color:#93C5FD;'>Jayawijaya · Asmat · Sentani</strong> · 2024–2025
+  <p style="color:rgba(255,255,255,0.78);margin:8px 0 0;font-size:0.95rem;">
+    Pemetaan isu, ketegangan, kebutuhan, dan harapan dari perspektif masyarakat (Kelompok) dan pemangku kebijakan (KII) di Jayawijaya, Asmat, dan Sentani
   </p>
 </div>
 """, unsafe_allow_html=True)
 
-# ──────────────────────────────────────────────────────────────────────
+# Top-level metrics
+col1, col2, col3, col4, col5 = st.columns(5)
+with col1:
+    st.markdown(f"""<div class="metric-card">
+        <div class="metric-label">Total Responden Kelompok</div>
+        <div class="metric-value">{len(dfk)}</div>
+        <div class="metric-delta">3 Wilayah</div>
+    </div>""", unsafe_allow_html=True)
+with col2:
+    st.markdown(f"""<div class="metric-card">
+        <div class="metric-label">Responden KII (Pemerintah)</div>
+        <div class="metric-value">{len(dfkii)}</div>
+        <div class="metric-delta">7 Narasumber</div>
+    </div>""", unsafe_allow_html=True)
+with col3:
+    st.markdown(f"""<div class="metric-card">
+        <div class="metric-label">Wilayah Kajian</div>
+        <div class="metric-value">3</div>
+        <div class="metric-delta">Jayawijaya · Asmat · Sentani</div>
+    </div>""", unsafe_allow_html=True)
+with col4:
+    n_isu = dfk["Tanggapan"].str.lower().str.contains("mabuk|miras|aibon|ganja|narkoba", na=False).sum()
+    st.markdown(f"""<div class="metric-card">
+        <div class="metric-label">Menyebut Narkoba/Miras</div>
+        <div class="metric-value" style="color:#c0392b;">{n_isu}</div>
+        <div class="metric-delta">Tanggapan Kelompok</div>
+    </div>""", unsafe_allow_html=True)
+with col5:
+    n_kdrt = dfk["Tanggapan"].str.lower().str.contains("kekerasan|dipukul|begal|pencurian|kriminal", na=False).sum()
+    st.markdown(f"""<div class="metric-card">
+        <div class="metric-label">Menyebut Kekerasan/Kriminal</div>
+        <div class="metric-value" style="color:#c0392b;">{n_kdrt}</div>
+        <div class="metric-delta">Tanggapan Kelompok</div>
+    </div>""", unsafe_allow_html=True)
+
+
+# ─────────────────────────────────────────────
 # TABS
-# ──────────────────────────────────────────────────────────────────────
+# ─────────────────────────────────────────────
 tab1, tab2, tab3 = st.tabs([
-    "👥  Dataset 1 — Masyarakat (FGD)",
-    "🏛️  Dataset 2 — KII (Narasumber Pemerintah)",
-    "📄  Laporan Eksekutif & Rekomendasi",
+    "📋 Dataset 1 – Kelompok Masyarakat",
+    "🏛️ Dataset 2 – KII Pemerintah/Lembaga",
+    "📊 Perbandingan & Laporan Eksekutif",
 ])
 
-# ══════════════════════════════════════════════════════════════════════
-# TAB 1 — MASYARAKAT
-# ══════════════════════════════════════════════════════════════════════
+
+# ══════════════════════════════════════════════
+# TAB 1: KELOMPOK MASYARAKAT
+# ══════════════════════════════════════════════
 with tab1:
+    st.markdown('<div class="section-header">📋 Analisis Tanggapan Kelompok Masyarakat</div>', unsafe_allow_html=True)
 
-    # ── KPI ──────────────────────────────────────────────────────────
-    st.markdown("<div class='sec-hdr'>📌 Ringkasan Dataset 1 — Masyarakat (FGD)</div>",
-                unsafe_allow_html=True)
-    total = len(FK)
-    n_anak   = (FK["Kelompok_Usia"]=="Anak").sum()
-    n_dewasa = (FK["Kelompok_Usia"]=="Dewasa").sum()
-    pct_konflik  = FK["Tanggapan"].str.contains(
-        "perang|kekerasan|miras|mabuk|ancaman|begal|parang|pukul|dipukul",
-        case=False,na=False).mean()*100
-    pct_korupsi  = FK["Tanggapan"].str.contains(
-        "dipotong|tidak adil|kepala kampung|oknum|dicoret|tidak merata",
-        case=False,na=False).mean()*100
-
-    c1,c2,c3,c4,c5 = st.columns(5)
-    c1.metric("Total Responden",        f"{total:,}")
-    c2.metric("Responden Anak",          f"{n_anak:,}")
-    c3.metric("Responden Dewasa",        f"{n_dewasa:,}")
-    c4.metric("Menyebut Kekerasan/Konflik", f"{pct_konflik:.0f}%")
-    c5.metric("Menyebut Korupsi Bantuan",   f"{pct_korupsi:.0f}%")
-
-    st.divider()
-
-    # ── ISU 1: DISTRIBUSI TEMA ────────────────────────────────────────
-    st.markdown("<div class='sec-hdr'>📊 Isu 1 — Distribusi Tema Tanggapan Masyarakat</div>",
-                unsafe_allow_html=True)
+    # ── ISU 1: Ketegangan & Konflik ──────────────
+    st.markdown("### 🔴 Isu 1 · Peta Ketegangan & Konflik Sosial")
     st.markdown("""
-    <div class='icard icard-blue'>
-    <b>Temuan:</b> Delapan tema dominan teridentifikasi dari tanggapan masyarakat.
-    Isu ekonomi & kemiskinan mendominasi di Asmat, kekerasan & konflik paling menonjol di Jayawijaya,
-    dan kebutuhan pendidikan konsisten muncul di ketiga wilayah.
-    </div>""", unsafe_allow_html=True)
+    <div class="issue-card">
+        <div class="issue-title">⚠️ Ketegangan Utama yang Mempengaruhi Keluarga</div>
+        <div class="issue-desc">Dari tanggapan masyarakat, ketegangan bersumber dari tiga klaster besar: 
+        <b>perilaku destruktif</b> (miras, narkoba, perjudian online), <b>ketidakadilan distribusi bantuan</b> pemerintah 
+        (bantuan hanya untuk simpatisan/keluarga pemimpin), dan <b>konflik horizontal</b> (perang suku, sengketa tanah, 
+        kenakalan remaja). Isu korupsi pemerintah kampung dan kriminalitas berbasis ekonomi (begal, pencurian) 
+        saling memperburuk satu sama lain.</div>
+    </div>
+    """, unsafe_allow_html=True)
 
-    tema_ct = FK_["Tema_List"].value_counts().reset_index()
-    tema_ct.columns = ["Tema","Jumlah"]
-    tema_ct = tema_ct[tema_ct["Tema"] != "Kehidupan Sehari-hari & Lainnya"].sort_values("Jumlah")
-
-    fig_t = px.bar(
-        tema_ct, x="Jumlah", y="Tema", orientation="h",
-        color="Tema", color_discrete_sequence=C_MAIN,
-        title="Frekuensi Kemunculan Tema Isu — Tanggapan Masyarakat",
-        text="Jumlah",
-    )
-    fig_t.update_traces(textposition="outside",
-                        textfont=dict(color="#1B2A4A", size=12, family="Plus Jakarta Sans"))
-    fig_t.update_layout(**PLOT_LAYOUT, showlegend=False, height=400,
-                        yaxis=dict(autorange="reversed", **PLOT_LAYOUT["yaxis"]))
-    st.plotly_chart(fig_t, use_container_width=True)
-
-    # ── ISU 2: KETAKUTAN ANAK ─────────────────────────────────────────
-    st.markdown("<div class='sec-hdr'>⚠️ Isu 2 — Kekerasan Domestik & Ketakutan Anak</div>",
-                unsafe_allow_html=True)
-    col_a, col_b = st.columns([3,2])
-
-    with col_a:
-        takut = {
-            "Dipukul / Kekerasan Fisik dari Orang Tua":
-                df_k["Tanggapan"].str.contains("dipukul|pukul|kekerasan fisik dari bap|dari orang tua",case=False,na=False).sum(),
-            "Kekerasan Akibat Miras / Orang Mabuk":
-                df_k["Tanggapan"].str.contains("miras|mabuk|mabok|parang saat marah|pegang parang",case=False,na=False).sum(),
-            "Perang Suku & Konflik Antar Kampung":
-                df_k["Tanggapan"].str.contains("perang suku|saling serang|antar kampung|konflik",case=False,na=False).sum(),
-            "Aibon / Narkoba di Lingkungan":
-                df_k["Tanggapan"].str.contains("aibon|narkoba|ganja",case=False,na=False).sum(),
-            "Kehilangan Orang Tua / Keluarga":
-                df_k["Tanggapan"].str.contains("kehilangan|meninggal|kehilangan papa|mama",case=False,na=False).sum(),
-            "Ketidakpastian Masa Depan / Ekonomi":
-                df_k["Tanggapan"].str.contains("masa depan|cita|pekerjaan|tidak pasti",case=False,na=False).sum(),
-        }
-        df_t = pd.DataFrame(list(takut.items()),columns=["Ketakutan","Jumlah"]).sort_values("Jumlah")
-        fig_takut = px.bar(
-            df_t, x="Jumlah", y="Ketakutan", orientation="h",
-            color="Jumlah", color_continuous_scale=C_SEQ_RD,
-            title="Jenis Ketakutan yang Dilaporkan Masyarakat",
-            text="Jumlah",
-        )
-        fig_takut.update_traces(textposition="outside",
-                                textfont=dict(color="#1B2A4A", size=12))
-        fig_takut.update_layout(**PLOT_LAYOUT, showlegend=False, height=360,
-                                coloraxis_showscale=False,
-                                yaxis=dict(autorange="reversed", **PLOT_LAYOUT["yaxis"]))
-        st.plotly_chart(fig_takut, use_container_width=True)
-
-    with col_b:
-        st.markdown("""
-        <div class='icard'>
-        <b>🔴 Kekerasan dalam Rumah Tangga</b><br><br>
-        Responden anak menyebut <b>kekerasan fisik dari orang tua</b> sebagai ketakutan utama —
-        melebihi konflik sosial maupun bencana. Anak-anak melaporkan melarikan diri ke rumah nenek
-        atau ke gereja sebagai strategi perlindungan diri.
-        </div>""", unsafe_allow_html=True)
-
-        kdrta = df_k[(df_k["Kelompok_Usia"]=="Anak") &
-                     df_k["Tanggapan"].str.contains("dipukul|pukul.*bap|kekerasan fisik",case=False,na=False)]
-        for _, row in kdrta.head(3).iterrows():
-            txt = str(row["Tanggapan"])[:170] + ("…" if len(str(row["Tanggapan"]))>170 else "")
-            st.markdown(f"""<div class='qbox'>&ldquo;{txt}&rdquo;
-            <br><small>— {row.get('Wilayah','')}</small></div>""", unsafe_allow_html=True)
-
-    # ── ISU 3: MIRAS ─────────────────────────────────────────────────
-    st.markdown("<div class='sec-hdr'>🍺 Isu 3 — Miras sebagai Pemicu Kekerasan Komunitas</div>",
-                unsafe_allow_html=True)
-    col_c, col_d = st.columns(2)
-
-    with col_c:
-        miras_w = {}
-        for w in df_k["Wilayah"].dropna().unique():
-            miras_w[w] = df_k[df_k["Wilayah"]==w]["Tanggapan"].str.contains(
-                "miras|mabuk|mabok|alkohol",case=False,na=False).sum()
-        df_mw = pd.DataFrame(list(miras_w.items()),columns=["Wilayah","Jumlah"])
-        fig_mw = px.bar(
-            df_mw, x="Wilayah", y="Jumlah", color="Wilayah",
-            color_discrete_sequence=["#E63946","#2563EB","#EA6C00"],
-            title="Frekuensi Tanggapan Terkait Miras per Wilayah",
-            text="Jumlah",
-        )
-        fig_mw.update_traces(textposition="outside", textfont=dict(color="#1B2A4A",size=12))
-        fig_mw.update_layout(**PLOT_LAYOUT, showlegend=False, height=320)
-        st.plotly_chart(fig_mw, use_container_width=True)
-
-    with col_d:
-        dampak = {
-            "Kekerasan Fisik / Pemukul":     df_k["Tanggapan"].str.contains("pukul|parang|marah|kekerasan",case=False,na=False).sum(),
-            "Pencurian / Begal":             df_k["Tanggapan"].str.contains("pencurian|begal|curi|helm",case=False,na=False).sum(),
-            "Konflik Antar Kampung":         df_k["Tanggapan"].str.contains("saling serang|antar kampung|perang",case=False,na=False).sum(),
-            "Perselingkuhan / Perceraian":   df_k["Tanggapan"].str.contains("perselingkuhan|perceraian|pembunuhan",case=False,na=False).sum(),
-        }
-        df_dm = pd.DataFrame(list(dampak.items()),columns=["Dampak","Jumlah"])
-        fig_dm = px.pie(
-            df_dm, names="Dampak", values="Jumlah",
-            color_discrete_sequence=["#E63946","#1B2A4A","#EA6C00","#64748B"],
-            title="Dampak Turunan Miras yang Dilaporkan",
-            hole=0.42,
-        )
-        fig_dm.update_traces(textposition="inside", textinfo="label+percent",
-                             textfont=dict(color="#FFFFFF", size=11))
-        fig_dm.update_layout(**PLOT_LAYOUT, showlegend=False, height=320)
-        st.plotly_chart(fig_dm, use_container_width=True)
-
-    # ── ISU 4: KORUPSI BLT ───────────────────────────────────────────
-    st.markdown("<div class='sec-hdr'>💸 Isu 4 — Korupsi & Pemotongan Dana Bantuan (BLT)</div>",
-                unsafe_allow_html=True)
-    st.markdown("""
-    <div class='icard icard-orange'>
-    <b>Temuan Kritis:</b> Masyarakat Asmat secara konsisten melaporkan pemotongan BLT oleh oknum kepala kampung,
-    penunjukan kepala kampung oleh bupati tanpa suara rakyat, dan diskriminasi distribusi bantuan
-    berbasis afiliasi politik. Ini adalah <b>korupsi berjamaah terstruktur</b> yang merusak kepercayaan
-    masyarakat terhadap seluruh sistem pemerintahan kampung.
-    </div>""", unsafe_allow_html=True)
-
-    col_e, col_f = st.columns([2,3])
-    with col_e:
-        kor = {
-            "BLT Dipotong Oknum":                   df_k["Tanggapan"].str.contains("dipotong|potong.*blt",case=False,na=False).sum(),
-            "Kepala Kampung Memihak Simpatisan":     df_k["Tanggapan"].str.contains("memihak|simpatisan|timses",case=False,na=False).sum(),
-            "Bantuan Tidak Merata":                  df_k["Tanggapan"].str.contains("tidak merata|tidak adil|tidak penuh|tidak dapat",case=False,na=False).sum(),
-            "Kepala Kampung Tidak Dipercaya":        df_k["Tanggapan"].str.contains("tidak peduli|anti masyarakat|kepala kampung.*tidak",case=False,na=False).sum(),
-            "Dana Desa Diselewengkan":               df_k["Tanggapan"].str.contains("pinjam.*add|membayar hutang|kebutuhan kepala",case=False,na=False).sum(),
-        }
-        df_kor = pd.DataFrame(list(kor.items()),columns=["Bentuk","Jumlah"])
-        df_kor = df_kor[df_kor["Jumlah"]>0].sort_values("Jumlah")
-        fig_kor = px.bar(
-            df_kor, x="Jumlah", y="Bentuk", orientation="h",
-            color="Jumlah", color_continuous_scale=C_SEQ_OR,
-            title="Bentuk Penyimpangan Dana yang Dilaporkan",
-            text="Jumlah",
-        )
-        fig_kor.update_traces(textposition="outside", textfont=dict(color="#1B2A4A",size=12))
-        fig_kor.update_layout(**PLOT_LAYOUT, showlegend=False, height=320,
-                              coloraxis_showscale=False,
-                              yaxis=dict(autorange="reversed", **PLOT_LAYOUT["yaxis"]))
-        st.plotly_chart(fig_kor, use_container_width=True)
-
-    with col_f:
-        st.markdown("#### 📣 Suara Langsung Masyarakat")
-        kor_rows = df_k[df_k["Tanggapan"].str.contains(
-            "dipotong|memihak|anti masyarakat|pinjam.*add|dicoret|timses",
-            case=False,na=False)].head(5)
-        for _, row in kor_rows.iterrows():
-            txt = str(row["Tanggapan"])[:230]+"…" if len(str(row["Tanggapan"]))>230 else str(row["Tanggapan"])
-            st.markdown(f"""<div class='qbox qbox-orange'>&ldquo;{txt}&rdquo;
-            <br><small>— {row.get('Wilayah','')}</small></div>""", unsafe_allow_html=True)
-
-    # ── ISU 5: KEBUTUHAN vs HARAPAN ──────────────────────────────────
-    st.markdown("<div class='sec-hdr'>🌱 Isu 5 — Kebutuhan Utama vs Harapan Masa Depan</div>",
-                unsafe_allow_html=True)
-    col_g, col_h = st.columns(2)
-
-    with col_g:
-        keb = {
-            "Air Bersih / Sanitasi":    df_k["Tanggapan"].str.contains("air bersih|sumur|pah|sanitasi",case=False,na=False).sum(),
-            "Lapangan Kerja":           df_k["Tanggapan"].str.contains("pekerjaan|kerja|lapangan kerja|lowongan",case=False,na=False).sum(),
-            "Pendidikan / Sekolah":     df_k["Tanggapan"].str.contains("sekolah|pendidikan|belajar|guru",case=False,na=False).sum(),
-            "Akses Kesehatan":          df_k["Tanggapan"].str.contains("kesehatan|rumah sakit|puskesmas|imunisasi",case=False,na=False).sum(),
-            "Bantuan Pangan / BLT":     df_k["Tanggapan"].str.contains("pangan|sembako|blt|beras|raskin|bantuan",case=False,na=False).sum(),
-            "Infrastruktur Jalan":      df_k["Tanggapan"].str.contains("jalan|jembatan|infrastruktur|akses",case=False,na=False).sum(),
-            "Modal Usaha / Ekonomi":    df_k["Tanggapan"].str.contains("modal|usaha|ternak|kebun|keramba|bibit",case=False,na=False).sum(),
-        }
-        df_kb = pd.DataFrame(list(keb.items()),columns=["Kebutuhan","Jumlah"]).sort_values("Jumlah")
-        fig_kb = px.bar(
-            df_kb, x="Jumlah", y="Kebutuhan", orientation="h",
-            color="Jumlah", color_continuous_scale=C_SEQ_BL,
-            title="Kebutuhan Utama yang Disampaikan Masyarakat",
-            text="Jumlah",
-        )
-        fig_kb.update_traces(textposition="outside", textfont=dict(color="#1B2A4A",size=12))
-        fig_kb.update_layout(**PLOT_LAYOUT, showlegend=False, height=360,
-                             coloraxis_showscale=False,
-                             yaxis=dict(autorange="reversed", **PLOT_LAYOUT["yaxis"]))
-        st.plotly_chart(fig_kb, use_container_width=True)
-
-    with col_h:
-        har = {
-            "Pendidikan Lebih Baik":         df_k["Tanggapan"].str.contains("sekolah.*baik|kuliah|ijazah|lulus",case=False,na=False).sum(),
-            "Kegiatan Positif Pemuda":        df_k["Tanggapan"].str.contains("kegiatan.*positif|olahraga|bazaar|lomba|rumah baca",case=False,na=False).sum(),
-            "Komunitas / Gereja Maju":        df_k["Tanggapan"].str.contains("gereja.*maju|komunitas.*baik|ibadah",case=False,na=False).sum(),
-            "Pemerintah Lebih Adil":          df_k["Tanggapan"].str.contains("pemerintah.*adil|adil|pemimpin.*baik",case=False,na=False).sum(),
-            "Lapangan Kerja":                 df_k["Tanggapan"].str.contains("lowongan|pekerjaan.*wvi|cari kerja",case=False,na=False).sum(),
-            "Infrastruktur Kampung":          df_k["Tanggapan"].str.contains("jalan|jembatan|air bersih|renovasi|pembangunan",case=False,na=False).sum(),
-        }
-        df_hr = pd.DataFrame(list(har.items()),columns=["Harapan","Jumlah"]).sort_values("Jumlah")
-        fig_hr = px.bar(
-            df_hr, x="Jumlah", y="Harapan", orientation="h",
-            color="Jumlah", color_continuous_scale=C_SEQ_GN,
-            title="Harapan Masyarakat untuk Masa Depan Komunitas",
-            text="Jumlah",
-        )
-        fig_hr.update_traces(textposition="outside", textfont=dict(color="#1B2A4A",size=12))
-        fig_hr.update_layout(**PLOT_LAYOUT, showlegend=False, height=360,
-                             coloraxis_showscale=False,
-                             yaxis=dict(autorange="reversed", **PLOT_LAYOUT["yaxis"]))
-        st.plotly_chart(fig_hr, use_container_width=True)
-
-    # ── ISU 6: HEATMAP ───────────────────────────────────────────────
-    st.markdown("<div class='sec-hdr'>🗺️ Isu 6 — Peta Isu: Tema per Wilayah (Heatmap)</div>",
-                unsafe_allow_html=True)
-    tw = FK_.groupby(["Wilayah","Tema_List"]).size().reset_index(name="Jumlah")
-    tw = tw[tw["Tema_List"]!="Kehidupan Sehari-hari & Lainnya"]
-    pivot = tw.pivot(index="Tema_List",columns="Wilayah",values="Jumlah").fillna(0)
-    fig_hm = px.imshow(
-        pivot, color_continuous_scale="YlOrRd",
-        title="Intensitas Isu per Wilayah (Semakin Gelap = Semakin Dominan)",
-        aspect="auto", text_auto=True,
-    )
-    fig_hm.update_traces(textfont=dict(color="#1B2A4A", size=12))
-    fig_hm.update_layout(**PLOT_LAYOUT, height=390)
-    st.plotly_chart(fig_hm, use_container_width=True)
-
-    # ── ISU 7: ANAK vs DEWASA ─────────────────────────────────────────
-    st.markdown("<div class='sec-hdr'>👦👩 Perbandingan Isu: Anak vs Dewasa</div>",
-                unsafe_allow_html=True)
-    ck = {
-        "Kekerasan / Pukul":       "dipukul|pukul|kekerasan",
-        "Ekonomi / Pekerjaan":     "ekonomi|pekerjaan|kerja|dana|bantuan",
-        "Pendidikan / Sekolah":    "sekolah|belajar|guru|pendidikan",
-        "Miras / Narkoba":         "miras|mabuk|aibon|narkoba|ganja",
-        "Harapan Masa Depan":      "harapan|cita|masa depan|berubah",
-        "Peran Komunitas":         "gereja|ibadah|komunitas|berkontribusi",
+    tension_keywords = {
+        "Miras / Mabuk": ["mabok", "mabuk", "miras", "alkohol", "minuman keras"],
+        "Narkoba / Aibon": ["narkoba", "aibon", "ganja", "obat terlarang"],
+        "Judol / Perjudian": ["judol", "judi", "perjudian"],
+        "Pencurian / Begal": ["pencurian", "begal", "curi", "kriminal", "rampok"],
+        "Perang Suku": ["perang suku", "konflik suku", "denda adat", "sajam"],
+        "Korupsi / Dana Desa": ["dana desa", "kepala kampung", "korupsi", "dipotong", "simpatisan", "musrenbang"],
+        "Kekerasan Fisik / KDRT": ["kekerasan", "dipukul", "parang", "pukul", "pukuli"],
+        "Sengketa Tanah": ["sengketa tanah", "batas wilayah", "hak tanah", "hak ulayat", "lahan"],
     }
-    rows_c = []
-    for kel in ["Anak","Dewasa"]:
-        sub = df_k[df_k["Kelompok_Usia"]==kel]
-        for label, pat in ck.items():
-            rows_c.append({"Kelompok":kel,"Isu":label,
-                           "Frekuensi":sub["Tanggapan"].str.contains(pat,case=False,na=False).sum()})
-    df_c = pd.DataFrame(rows_c)
-    fig_c = px.bar(
-        df_c, x="Isu", y="Frekuensi", color="Kelompok", barmode="group",
-        color_discrete_map={"Anak":"#2563EB","Dewasa":"#E63946"},
-        title="Perbandingan Prioritas Isu: Anak vs Dewasa",
-        text="Frekuensi",
-    )
-    fig_c.update_traces(textposition="outside", textfont=dict(color="#1B2A4A",size=11))
-    fig_c.update_layout(**PLOT_LAYOUT, height=360, xaxis_tickangle=-20,
-                        legend=dict(**PLOT_LAYOUT["legend"], orientation="h", y=1.08))
-    st.plotly_chart(fig_c, use_container_width=True)
 
-    with st.expander("📋 Lihat Data Mentah — Dataset Masyarakat"):
-        st.dataframe(FK[["Wilayah","Kelompok_Usia","Jenis_Kelamin","Pertanyaan","Tanggapan"]],
-                     use_container_width=True, height=340)
+    col_t1, col_t2 = st.columns([3, 2])
+    with col_t1:
+        df_tension = extract_top_keywords(dfk["Tanggapan"], tension_keywords, dfk["Wilayah"], sel_wilayah_k)
+        df_tension = df_tension[df_tension["Jumlah"] > 0]
+        if not df_tension.empty:
+            fig = bar_chart(df_tension, "Tema", "Jumlah", "Frekuensi Sebutan Jenis Ketegangan", orientation="h")
+            st.plotly_chart(fig, use_container_width=True)
 
-# ══════════════════════════════════════════════════════════════════════
-# TAB 2 — KII
-# ══════════════════════════════════════════════════════════════════════
-with tab2:
+    with col_t2:
+        # Per wilayah breakdown untuk ketegangan
+        df_w = []
+        for w in dfk["Wilayah"].unique():
+            sub = dfk[dfk["Wilayah"] == w]["Tanggapan"]
+            for label, kws in tension_keywords.items():
+                pattern = "|".join(kws)
+                cnt = sub.str.lower().str.contains(pattern, na=False).sum()
+                if cnt > 0:
+                    df_w.append({"Wilayah": w, "Isu": label, "Jumlah": cnt})
+        df_w = pd.DataFrame(df_w)
+        if not df_w.empty:
+            fig2 = px.bar(df_w, x="Wilayah", y="Jumlah", color="Isu", title="Ketegangan per Wilayah",
+                          barmode="stack", color_discrete_sequence=COLORS_MAIN)
+            fig2.update_layout(
+                plot_bgcolor="white", paper_bgcolor="white",
+                font=dict(family="Plus Jakarta Sans", size=11),
+                title_font=dict(family="Sora", size=14, color="#1a1a2e"),
+                legend=dict(font=dict(size=10)),
+                margin=dict(t=50, b=20)
+            )
+            st.plotly_chart(fig2, use_container_width=True)
 
-    # ── KPI ──────────────────────────────────────────────────────────
-    st.markdown("<div class='sec-hdr'>📌 Ringkasan Dataset 2 — KII (Narasumber Pemerintah)</div>",
-                unsafe_allow_html=True)
-    c1,c2,c3,c4,c5 = st.columns(5)
-    c1.metric("Total Pernyataan KII",          f"{len(FI):,}")
-    c2.metric("Jayawijaya",                    f"{(FI['Wilayah']=='Jayawijaya').sum():,}")
-    c3.metric("Sentani",                       f"{(FI['Wilayah']=='Sentani').sum():,}")
-    c4.metric("Menyebut Anak/Remaja Rentan",   f"{FI['Tanggapan'].str.contains('anak|remaja|rentan',case=False,na=False).mean()*100:.0f}%")
-    c5.metric("Menyebut Konflik/Keamanan",     f"{FI['Tanggapan'].str.contains('konflik|bersenjata|keamanan|kkb',case=False,na=False).mean()*100:.0f}%")
+    # Quotes
+    st.markdown("**Kutipan Langsung dari Tanggapan Masyarakat:**")
+    quotes_tension = [
+        ("Jayawijaya", "Mabok, Judol, Tanaman ganja, Aibon, Pencurian, Begal, Pembunuhan..."),
+        ("Asmat", "Kebutuhan masyarakat yang sudah dimasukkan di Musrenbang tidak dijawab karena pengadaan dilakukan hanya untuk kepentingan orang penting/keluarga pemimpin."),
+        ("Asmat", "Bantuan yang sampai ke masyarakat dipotong di distrik dan di kampung sehingga yang sampai ke masyarakat tidak penuh."),
+        ("Sentani", "Sengketa Tanah: ada kasus di mana hak pakai berubah menjadi hak milik karena transaksi uang yang tidak sah."),
+    ]
+    for wilayah, q in quotes_tension:
+        st.markdown(f"""<div class="quote-box"><span class="tag">{wilayah}</span> {q}</div>""", unsafe_allow_html=True)
 
     st.divider()
 
-    # ── ISU 1: DISTRIBUSI TEMA KII ────────────────────────────────────
-    st.markdown("<div class='sec-hdr'>📊 Isu 1 — Peta Isu Strategis dari Narasumber Pemerintah</div>",
-                unsafe_allow_html=True)
-    col_a, col_b = st.columns([3,2])
-    with col_a:
-        tkii = FI_["Tema_List"].value_counts().reset_index()
-        tkii.columns = ["Tema","Jumlah"]
-        tkii = tkii[tkii["Tema"]!="Kehidupan Sehari-hari & Lainnya"].sort_values("Jumlah")
-        fig_tk = px.bar(
-            tkii, x="Jumlah", y="Tema", orientation="h",
-            color="Tema", color_discrete_sequence=C_MAIN,
-            title="Distribusi Tema dalam Pernyataan KII",
-            text="Jumlah",
-        )
-        fig_tk.update_traces(textposition="outside", textfont=dict(color="#1B2A4A",size=12))
-        fig_tk.update_layout(**PLOT_LAYOUT, showlegend=False, height=390,
-                             yaxis=dict(autorange="reversed", **PLOT_LAYOUT["yaxis"]))
-        st.plotly_chart(fig_tk, use_container_width=True)
+    # ── ISU 2: Kebutuhan Dasar ──────────────
+    st.markdown("### 🟠 Isu 2 · Kebutuhan Dasar yang Belum Terpenuhi")
+    st.markdown("""
+    <div class="issue-card">
+        <div class="issue-title">💧 Akses Air, Pendidikan, Kesehatan & Ekonomi</div>
+        <div class="issue-desc">Kebutuhan dasar yang paling banyak disebut adalah air bersih (PAH/blong rusak berulang), 
+        akses pendidikan yang terbatas (gedung TK menumpang, MCK sekolah tidak ada, biaya komite memberatkan), 
+        kesehatan anak (imunisasi kurang, ibu hamil tidak periksa), dan ekonomi produktif 
+        (keramba ikan, kebun apung, bensin untuk mencari nafkah). Distribusi bantuan yang tidak merata 
+        memperburuk ketimpangan antar kampung.</div>
+    </div>
+    """, unsafe_allow_html=True)
 
-    with col_b:
-        narsum_label = {
-            "GTY":"GTY (Jayawijaya)","JPY":"JPY (Jayawijaya)","ACL":"ACL (Jayawijaya)",
-            "Dinas Sosial":"Dinas Sosial (Sentani)","Dinas Pendidikan":"Dinas Pendidikan (Sentani)",
-            "RJF":"RJF (Asmat)","WBW":"WBW (Asmat)",
+    needs_keywords = {
+        "Air Bersih / PAH": ["air bersih", "sumur bor", "blong", "pah", "air minum", "penampungan air"],
+        "Pendidikan Anak": ["sekolah", "pendidikan", "belajar", "guru", "tk", "paud", "sd", "smp", "kuliah", "ijazah"],
+        "Kesehatan": ["kesehatan", "imunisasi", "rs", "rumah sakit", "puskesmas", "hamil", "balita", "hpv", "posyandu"],
+        "Ekonomi / Pekerjaan": ["ekonomi", "pekerjaan", "kerja", "modal", "usaha", "keramba", "kebun", "ikan", "bantuan", "blt"],
+        "Infrastruktur": ["jalan", "jembatan", "kamar mandi", "mck", "renovasi", "bangunan", "gedung", "fiber", "speed"],
+        "Keamanan": ["aman", "keamanan", "linmas", "polisi", "tni", "penjagaan"],
+    }
+
+    col_n1, col_n2, col_n3 = st.columns(3)
+    cols_need = [col_n1, col_n2, col_n3]
+    for i, (wilayah) in enumerate(["Jayawijaya", "Asmat, Papua Selatan", "Sentani"]):
+        sub = dfk[dfk["Wilayah"] == wilayah]["Tanggapan"]
+        df_n = count_keyword_hits(sub, needs_keywords)
+        df_n = df_n[df_n["Jumlah"] > 0]
+        with cols_need[i]:
+            wlabel = wilayah.split(",")[0]
+            if not df_n.empty:
+                fig = pie_chart(df_n, "Tema", "Jumlah", f"Kebutuhan Utama – {wlabel}")
+                st.plotly_chart(fig, use_container_width=True)
+
+    st.divider()
+
+    # ── ISU 3: Kekerasan terhadap Anak & Perempuan ──
+    st.markdown("### 🟡 Isu 3 · Kekerasan terhadap Anak & Diskriminasi Gender")
+    st.markdown("""
+    <div class="issue-card">
+        <div class="issue-title">🚨 KDRT, Kekerasan Orang Tua, dan Pembatasan Peran Perempuan</div>
+        <div class="issue-desc">Dari tanggapan anak-anak di Sentani, ditemukan frekuensi tinggi ketakutan terhadap 
+        kekerasan fisik dari orang tua (terutama ayah). Anak perempuan secara spesifik menghadapi pembatasan budaya 
+        (tidak boleh duduk di rumah adat, dianggap buruk jika tampil di gereja), bullying di lingkungan kampung, 
+        dan ketakutan pelecehan dari orang mabuk. Isu HIV pada anak SD yang disebut Dinas Sosial Sentani 
+        menunjukkan korelasi kuat antara penyalahgunaan zat dan kekerasan seksual.</div>
+    </div>
+    """, unsafe_allow_html=True)
+
+    col_v1, col_v2 = st.columns(2)
+    with col_v1:
+        # Ketakutan anak berdasarkan gender di Sentani
+        sentani_anak = dfk[(dfk["Wilayah"] == "Sentani") & (dfk["Kelompok_Usia"] == "Anak")]
+        violence_kws = {
+            "Kekerasan fisik dari orang tua": ["dipukul", "pukul", "kekerasan fisik"],
+            "Ancaman dari orang mabuk": ["mabuk", "miras"],
+            "Bullying / stigma sosial": ["bully", "fitnah", "diceritakan", "tidak senang"],
+            "Diskriminasi gender / adat": ["perempuan tidak boleh", "dilarang", "dianggap buruk", "ob"],
+            "Ketakutan masa depan": ["masa depan", "cita-cita", "pekerjaan"],
+            "Kehilangan orang tua": ["kehilangan", "orang tua", "mama", "bapa sakit"],
         }
-        nct = FI["Narsum"].value_counts().reset_index()
-        nct.columns = ["Narsum","Jumlah"]
-        nct["Narsum"] = nct["Narsum"].map(narsum_label).fillna(nct["Narsum"])
-        fig_nc = px.pie(
-            nct, names="Narsum", values="Jumlah",
-            color_discrete_sequence=C_MAIN,
-            title="Distribusi Pernyataan per Narasumber",
-            hole=0.42,
-        )
-        fig_nc.update_traces(textposition="inside", textinfo="label+percent",
-                             textfont=dict(color="#FFFFFF", size=11))
-        fig_nc.update_layout(**PLOT_LAYOUT, showlegend=False, height=390)
-        st.plotly_chart(fig_nc, use_container_width=True)
+        df_viol_p = count_keyword_hits(
+            sentani_anak[sentani_anak["Jenis_Kelamin"] == "Perempuan"]["Tanggapan"], violence_kws)
+        df_viol_l = count_keyword_hits(
+            sentani_anak[sentani_anak["Jenis_Kelamin"] == "Laki laki"]["Tanggapan"], violence_kws)
 
-    # ── ISU 2: KONFLIK BERSENJATA ─────────────────────────────────────
-    st.markdown("<div class='sec-hdr'>🔫 Isu 2 — Konflik Bersenjata & Kelompok Separatis (Jayawijaya)</div>",
-                unsafe_allow_html=True)
-    col_c, col_d = st.columns([2,3])
-    with col_c:
-        aktor = {
-            "Kelompok Sipil Bersenjata (OPM)": df_i["Tanggapan"].str.contains("bersenjata|egianus|papua merdeka|kelompok sipil",case=False,na=False).sum(),
-            "TNI / Polri":                     df_i["Tanggapan"].str.contains("tni|polri|aparat|militer",case=False,na=False).sum(),
-            "Tokoh Adat":                      df_i["Tanggapan"].str.contains("tokoh adat|kepala suku|adat",case=False,na=False).sum(),
-            "Gereja / Tokoh Agama":            df_i["Tanggapan"].str.contains("gereja|pendeta|tokoh agama",case=False,na=False).sum(),
-            "Pemerintah Daerah":               df_i["Tanggapan"].str.contains("pemda|pemerintah daerah|bupati",case=False,na=False).sum(),
+        df_viol_p = df_viol_p[df_viol_p["Jumlah"] > 0].assign(Gender="Perempuan")
+        df_viol_l = df_viol_l[df_viol_l["Jumlah"] > 0].assign(Gender="Laki-laki")
+        df_viol = pd.concat([df_viol_p, df_viol_l])
+
+        if not df_viol.empty:
+            fig = px.bar(df_viol, x="Tema", y="Jumlah", color="Gender", barmode="group",
+                         title="Ketakutan Anak Sentani – per Gender",
+                         color_discrete_map={"Perempuan": "#e74c3c", "Laki-laki": "#2980b9"})
+            fig.update_layout(
+                plot_bgcolor="white", paper_bgcolor="white",
+                font=dict(family="Plus Jakarta Sans", size=11),
+                title_font=dict(family="Sora", size=14),
+                xaxis_tickangle=-30, margin=dict(t=50, b=80)
+            )
+            st.plotly_chart(fig, use_container_width=True)
+
+    with col_v2:
+        st.markdown("**Kutipan Anak Perempuan Sentani:**")
+        child_quotes = [
+            "mendapatkan kekerasan fisik dari bapak saya",
+            "Takut orang mabuk, berpotensi melecehkan",
+            "Tidak boleh naik ke gereja, karena kami dilarang (majelis tertentu) – diceritakan yang buruk",
+            "Tidak boleh duduk di OB (rumah adat) karena dianggap perempuan tidak boleh berlebihan",
+            "Bully di kampung (mama-mama tidak senang melihat kami bergaya)",
+        ]
+        for q in child_quotes:
+            st.markdown(f'<div class="quote-box">"{q}"</div>', unsafe_allow_html=True)
+        
+        st.markdown('<div class="alert-red">⚠️ Kekerasan fisik orang tua disebut oleh <b>5 dari 9 anak perempuan</b> Sentani sebagai ketakutan utama mereka.</div>', unsafe_allow_html=True)
+
+    st.divider()
+
+    # ── ISU 4: Harapan Pemuda & Kontribusi ──
+    st.markdown("### 🟢 Isu 4 · Harapan & Potensi Pemuda")
+    st.markdown("""
+    <div class="issue-card">
+        <div class="issue-title">💚 Anak Muda Ingin Berkontribusi – Namun Terkendala Kesempatan</div>
+        <div class="issue-desc">Terlepas dari kondisi komunitas yang penuh tekanan, anak-anak dan remaja 
+        mengekspresikan harapan konkret: menjadi pengajar di rumah baca, aktif di gereja, ikut lomba budaya, 
+        dan mendapat pekerjaan setelah lulus. Hambatan terbesar adalah minimnya lapangan kerja di kampung, 
+        terbatasnya fasilitas olahraga dan ruang publik, serta arus migrasi keluar yang mengurangi 
+        mentor/kakak pembina.</div>
+    </div>
+    """, unsafe_allow_html=True)
+
+    hope_keywords = {
+        "Pendidikan & Belajar": ["belajar", "sekolah", "kuliah", "ijazah", "beasiswa", "rumah baca", "mengajar"],
+        "Pekerjaan / Ekonomi": ["kerja", "pekerjaan", "lowongan", "usaha", "modal"],
+        "Peran di Gereja / Iman": ["gereja", "ibadah", "firman tuhan", "pelayan", "pengasuh", "rohani"],
+        "Olahraga & Seni Budaya": ["olahraga", "bola", "badminton", "lomba", "seni", "budaya", "lagu", "paduan suara"],
+        "Komunitas & Gotong Royong": ["gotong royong", "swadaya", "bersama", "masyarakat", "berkontribusi"],
+        "Keamanan & Perdamaian": ["aman", "damai", "perubahan", "lebih baik"],
+    }
+
+    hope_q_filter = dfk["Pertanyaan"].str.contains("harapan|kontribusi|berkontribusi", case=False, na=False)
+    dfk_hope = dfk[hope_q_filter]
+
+    col_h1, col_h2 = st.columns(2)
+    with col_h1:
+        df_hope_all = count_keyword_hits(dfk_hope["Tanggapan"], hope_keywords)
+        df_hope_all = df_hope_all[df_hope_all["Jumlah"] > 0]
+        if not df_hope_all.empty:
+            fig = bar_chart(df_hope_all, "Tema", "Jumlah", "Tema Harapan Masyarakat", orientation="h")
+            st.plotly_chart(fig, use_container_width=True)
+
+    with col_h2:
+        df_hope_w = []
+        for w in dfk["Wilayah"].unique():
+            sub = dfk_hope[dfk_hope["Wilayah"] == w]["Tanggapan"]
+            for label, kws in hope_keywords.items():
+                pattern = "|".join(kws)
+                cnt = sub.str.lower().str.contains(pattern, na=False).sum()
+                if cnt > 0:
+                    df_hope_w.append({"Wilayah": w.split(",")[0], "Harapan": label, "Jumlah": cnt})
+        df_hope_w = pd.DataFrame(df_hope_w)
+        if not df_hope_w.empty:
+            fig2 = px.bar(df_hope_w, x="Wilayah", y="Jumlah", color="Harapan", barmode="stack",
+                          title="Harapan per Wilayah", color_discrete_sequence=COLORS_MAIN)
+            fig2.update_layout(
+                plot_bgcolor="white", paper_bgcolor="white",
+                font=dict(family="Plus Jakarta Sans", size=11),
+                title_font=dict(family="Sora", size=14),
+                margin=dict(t=50, b=20)
+            )
+            st.plotly_chart(fig2, use_container_width=True)
+
+    st.divider()
+
+    # ── ISU 5: Respons Skenario 6 Bulan ke Depan ──
+    st.markdown("### 🔵 Isu 5 · Proyeksi Situasi 6 Bulan ke Depan")
+    col_s1, col_s2 = st.columns(2)
+
+    scenario_cols = ["keamanan", "politik", "ekonomi", "sosial"]
+    scenario_labels = {
+        "keamanan": {"pos": ["aman", "damai", "terkendali", "penjagaan"], "neg": ["pencurian", "mabuk", "kericuhan", "konflik"]},
+        "ekonomi":  {"pos": ["bantuan", "usaha", "modal", "tabungan", "meningkat"], "neg": ["habis", "susah", "kekurangan", "miskin"]},
+        "sosial":   {"pos": ["gotong royong", "saling bantu", "bersama", "baik"], "neg": ["diri sendiri", "memecah", "tidak ada"]},
+        "politik":  {"pos": ["perubahan", "adil", "renovasi"], "neg": ["tidak ada perubahan", "partisan", "tidak pernah"]},
+    }
+
+    scenario_q_filter = dfk["Pertanyaan"].str.contains("6 bulan|skenario", case=False, na=False)
+    dfk_sc = dfk[scenario_q_filter]
+
+    rows_sc = []
+    for dim, kws in scenario_labels.items():
+        pos = dfk_sc["Tanggapan"].str.lower().str.contains("|".join(kws["pos"]), na=False).sum()
+        neg = dfk_sc["Tanggapan"].str.lower().str.contains("|".join(kws["neg"]), na=False).sum()
+        rows_sc.append({"Dimensi": dim.capitalize(), "Optimistis": pos, "Pesimistis": neg})
+    df_sc = pd.DataFrame(rows_sc)
+
+    with col_s1:
+        fig_sc = go.Figure()
+        fig_sc.add_trace(go.Bar(name="Optimistis", x=df_sc["Dimensi"], y=df_sc["Optimistis"],
+                                 marker_color="#27ae60", text=df_sc["Optimistis"], textposition="outside"))
+        fig_sc.add_trace(go.Bar(name="Pesimistis", x=df_sc["Dimensi"], y=df_sc["Pesimistis"],
+                                 marker_color="#e74c3c", text=df_sc["Pesimistis"], textposition="outside"))
+        fig_sc.update_layout(
+            title="Sentimen Skenario 6 Bulan – Kelompok Masyarakat",
+            barmode="group", plot_bgcolor="white", paper_bgcolor="white",
+            font=dict(family="Plus Jakarta Sans", size=12),
+            title_font=dict(family="Sora", size=14),
+            legend=dict(orientation="h", y=1.1), margin=dict(t=60, b=20)
+        )
+        st.plotly_chart(fig_sc, use_container_width=True)
+
+    with col_s2:
+        st.markdown("**Kutipan Proyeksi Masyarakat:**")
+        sc_quotes = [
+            ("Asmat – Ekonomi", "Jika dapat dana bantuan akan segera habis sehingga perlu dimasukkan ASKA agar ada tabungan."),
+            ("Asmat – Keamanan", "Adanya Polsek, Satgas, akan damai karena adanya penjagaan, Linmas tidak berjaga tiap malam. Pencurian semakin meningkat."),
+            ("Asmat – Sosial", "Saling jaga dan gotong royong akan tetap dilakukan. Ada bapak yang bagi bibit sagu ke masyarakat yang belum punya."),
+            ("Sentani – Politik", "Jika ada perubahan kepala kampung, bupati dan wakil bupati maka yakin akan ada perubahan dan pembagian yang lebih adil."),
+        ]
+        for wilayah, q in sc_quotes:
+            st.markdown(f'<div class="quote-box"><span class="tag">{wilayah}</span> "{q}"</div>', unsafe_allow_html=True)
+
+
+# ══════════════════════════════════════════════
+# TAB 2: KII PEMERINTAH / LEMBAGA
+# ══════════════════════════════════════════════
+with tab2:
+    st.markdown('<div class="section-header">🏛️ Analisis Tanggapan KII – Pemerintah & Lembaga</div>', unsafe_allow_html=True)
+
+    # ── ISU 1 KII: Akar Ketegangan ──
+    st.markdown("### 🔴 Isu 1 · Akar Ketegangan Struktural & Lokal")
+    st.markdown("""
+    <div class="issue-card">
+        <div class="issue-title">🏗️ Nepotisme, Kesenjangan OAP–Pendatang, dan Konflik Lahan Adat</div>
+        <div class="issue-desc">Para narasumber KII mengidentifikasi akar masalah yang lebih dalam dari sekadar konflik antar-kelompok: 
+        <b>nepotisme birokrasi</b> yang menciptakan ketidakpercayaan publik pada pemerintah, 
+        <b>kesenjangan ekonomi antara OAP (Orang Asli Papua) dan pendatang</b> yang memicu polarisasi identitas, 
+        serta <b>pengabaian hak adat</b> dalam proyek-proyek PSN/pembangunan. Di Asmat, deforestasi massif untuk PSN Pangan 
+        tanpa AMDAL dan persetujuan adat menjadi pemicu konflik baru yang potensial.</div>
+    </div>
+    """, unsafe_allow_html=True)
+
+    tension_kii_kws = {
+        "Nepotisme / Korupsi Birokrasi": ["nepotisme", "birokrasi", "korupsi", "transparan", "distribusi tidak merata", "musrenbang"],
+        "Kesenjangan OAP vs Pendatang": ["oap", "pendatang", "polarisasi", "identitas", "rasisme"],
+        "Hak Adat / Lahan": ["hak adat", "ulayat", "adat", "lahan", "deforestasi", "psn", "tanah"],
+        "Konflik Bersenjata / KKB": ["kkb", "bersenjata", "kelompok sipil bersenjata", "tni", "polri", "nduga", "penyanderaan"],
+        "Inflasi / Krisis Ekonomi": ["inflasi", "pangan", "logistik", "krisis moneter", "harga"],
+        "Masalah Rumah Tangga / Sosial": ["perselingkuhan", "rumah tangga", "mabuk", "kriminal"],
+        "Isu Politik Lokal": ["pemilu", "pilkada", "rekrutmen", "pejabat", "kepala kampung"],
+        "Trauma Sosial / Historis": ["trauma", "historis", "konflik masa lalu", "susi air"],
+    }
+
+    col_k1, col_k2 = st.columns([3, 2])
+    with col_k1:
+        df_tkii = extract_top_keywords(dfkii["Tanggapan"], tension_kii_kws)
+        df_tkii = df_tkii[df_tkii["Jumlah"] > 0]
+        if not df_tkii.empty:
+            fig = bar_chart(df_tkii, "Tema", "Jumlah", "Frekuensi Sebutan Akar Ketegangan – KII", orientation="h")
+            st.plotly_chart(fig, use_container_width=True)
+
+    with col_k2:
+        # Ketegangan per wilayah KII
+        df_tkii_w = []
+        for w in dfkii["Wilayah"].unique():
+            sub = dfkii[dfkii["Wilayah"] == w]["Tanggapan"]
+            for label, kws in tension_kii_kws.items():
+                pattern = "|".join(kws)
+                cnt = sub.str.lower().str.contains(pattern, na=False).sum()
+                if cnt > 0:
+                    df_tkii_w.append({"Wilayah": w, "Isu": label, "Jumlah": cnt})
+        df_tkii_w = pd.DataFrame(df_tkii_w)
+        if not df_tkii_w.empty:
+            fig2 = px.bar(df_tkii_w, x="Wilayah", y="Jumlah", color="Isu", barmode="stack",
+                          title="Isu per Wilayah – Perspektif KII",
+                          color_discrete_sequence=COLORS_MAIN)
+            fig2.update_layout(
+                plot_bgcolor="white", paper_bgcolor="white",
+                font=dict(family="Plus Jakarta Sans", size=11),
+                title_font=dict(family="Sora", size=14),
+                margin=dict(t=50, b=20)
+            )
+            st.plotly_chart(fig2, use_container_width=True)
+
+    st.markdown("**Kutipan KII – Akar Ketegangan:**")
+    kii_q1 = [
+        ("Jayawijaya | JPY", "Nepotisme birokrasi yang memperkuat ketidakpercayaan pada pemerintah."),
+        ("Jayawijaya | JPY", "Polarisasi identitas (OAP vs pendatang) menjadi akar ketegangan yang sering diabaikan."),
+        ("Asmat | WBW", "Paradigma 'Tanah Kosong' vs. nilai sakral lahan adat. Sidang MPL PGI Februari 2026 menolak PSN pangan dan militerisme."),
+        ("Jayawijaya | ACL", "Sejak pemekaran provinsi, arus pendatang dari kabupaten lain memperbesar peluang bentrokan, terutama di pasar dan terminal."),
+    ]
+    for narsum, q in kii_q1:
+        st.markdown(f'<div class="quote-box"><span class="tag">{narsum}</span> {q}</div>', unsafe_allow_html=True)
+
+    st.divider()
+
+    # ── ISU 2 KII: Kelompok Rentan ──
+    st.markdown("### 🟠 Isu 2 · Kelompok Rentan yang Paling Terdampak")
+    st.markdown("""
+    <div class="issue-card">
+        <div class="issue-title">👶 Anak-Anak, Perempuan, Ibu Hamil & Komunitas Terpencil</div>
+        <div class="issue-desc">KII sepakat bahwa anak-anak dan remaja adalah kelompok paling rentan. 
+        Di Jayawijaya, anak-anak usia 10 tahun ke atas sudah dilibatkan dalam perang suku, kehilangan minat sekolah, 
+        dan mengalami trauma konflik. Ibu hamil dan balita di Asmat "hanya bisa pasrah". 
+        Di Sentani, Dinas Sosial menemukan anak SD terinfeksi HIV – diduga akibat kekerasan seksual yang dipicu narkoba/alkohol, 
+        serta anak-anak yang menggunakan aibon di jalanan. Komunitas terpencil (Tolikara, Nduga) 
+        mengalami isolasi logistik yang ekstrem.</div>
+    </div>
+    """, unsafe_allow_html=True)
+
+    vuln_kws = {
+        "Anak-anak / Remaja": ["anak", "remaja", "pelajar", "generasi muda"],
+        "Perempuan": ["perempuan", "ibu", "mama", "wanita"],
+        "Ibu Hamil / Balita": ["ibu hamil", "balita", "bayi"],
+        "Lansia": ["lansia", "orang tua", "tua"],
+        "Disabilitas": ["disabilitas", "difabel", "cacat"],
+        "Komunitas Terpencil": ["terpencil", "tolikara", "nduga", "pedalaman", "isolasi"],
+        "Keluarga Broken Home": ["broken home", "cerai", "perceraian", "tidak ada orang tua"],
+    }
+
+    col_v1, col_v2 = st.columns(2)
+    with col_v1:
+        vuln_q_filter = dfkii["Pertanyaan"].str.contains("rentan|berisiko", case=False, na=False)
+        df_vuln_kii = count_keyword_hits(dfkii[vuln_q_filter]["Tanggapan"], vuln_kws)
+        df_vuln_kii = df_vuln_kii[df_vuln_kii["Jumlah"] > 0]
+        if not df_vuln_kii.empty:
+            fig = pie_chart(df_vuln_kii, "Tema", "Jumlah", "Komposisi Kelompok Rentan – Perspektif KII")
+            st.plotly_chart(fig, use_container_width=True)
+
+    with col_v2:
+        st.markdown("**Gambaran Dampak per Kelompok Rentan:**")
+        vuln_data = {
+            "Kelompok": ["Anak-anak", "Ibu Hamil/Balita", "Perempuan", "Komunitas Terpencil", "Keluarga Broken Home"],
+            "Risiko Utama": [
+                "Dilibatkan perang suku, trauma konflik, putus sekolah, penyalahgunaan zat",
+                "Tidak bisa menyuarakan kebutuhan, pasrah terhadap kondisi",
+                "Kekerasan fisik (KDRT), diskriminasi adat, HIV akibat kekerasan seksual",
+                "Blokade logistik, isolasi layanan kesehatan & pendidikan",
+                "Rentan penyalahgunaan narkoba & aibon, putus sekolah",
+            ]
         }
-        df_ak = pd.DataFrame(list(aktor.items()),columns=["Aktor","Jumlah"]).sort_values("Jumlah")
-        fig_ak = px.bar(
-            df_ak, x="Jumlah", y="Aktor", orientation="h",
-            color="Jumlah", color_continuous_scale=C_SEQ_RD,
-            title="Aktor Disebut dalam Konteks Konflik",
-            text="Jumlah",
+        st.dataframe(pd.DataFrame(vuln_data), use_container_width=True, hide_index=True)
+
+        st.markdown('<div class="alert-red">🚨 Dinas Sosial Sentani: Ditemukan anak SD terinfeksi HIV, diduga karena kekerasan seksual yang dipicu alkohol/narkoba.</div>', unsafe_allow_html=True)
+        st.markdown('<div class="alert-yellow">⚠️ Jayawijaya: Anak usia 10 tahun sudah diajak perang suku dan memegang senjata tajam.</div>', unsafe_allow_html=True)
+
+    st.divider()
+
+    # ── ISU 3 KII: Aktor Berpengaruh & Dinamika ──
+    st.markdown("### 🟡 Isu 3 · Peta Aktor Berpengaruh & Dinamika Kekuasaan")
+    st.markdown("""
+    <div class="issue-card">
+        <div class="issue-title">🕸️ Pemerintah, Adat, Agama, Pemuda & LSM – Relasi yang Kompleks</div>
+        <div class="issue-desc">KII di Asmat memetakan enam klaster aktor utama: Politik/Pemda, Keamanan (TNI-Polri), 
+        Adat/Budaya, Agama (Gereja), Pemuda, dan Kemanusiaan (LSM). Gereja adalah mediator paling netral dan diterima. 
+        Kepala kampung mendapat kepercayaan rendah dari masyarakat karena dinilai memihak. 
+        Pemuda adalah "faktor paling dinamis" – mobilisasi massa tercepat dan bisa berubah hanya karena satu insiden. 
+        WVI (Wahana Visi Indonesia) dinilai positif karena langsung turun ke masyarakat, 
+        berbeda dari LSM lain yang lebih banyak menghabiskan biaya kegiatan.</div>
+    </div>
+    """, unsafe_allow_html=True)
+
+    # Actor influence map
+    actor_data = {
+        "Aktor": ["Gereja / Tokoh Agama", "Kepala Suku / Adat", "TNI / Polri", "Pemerintah / Pemda",
+                   "Pemuda", "LSM / NGO", "Kepala Kampung", "WVI"],
+        "Pengaruh (1-10)": [9, 8, 7, 6, 8, 5, 4, 7],
+        "Kepercayaan Publik (1-10)": [9, 8, 6, 4, 6, 7, 3, 8],
+        "Kategori": ["Agama", "Adat", "Keamanan", "Politik", "Masyarakat", "Kemanusiaan", "Politik", "Kemanusiaan"],
+    }
+    df_actors = pd.DataFrame(actor_data)
+
+    col_a1, col_a2 = st.columns([2, 1])
+    with col_a1:
+        fig_actors = px.scatter(df_actors, x="Pengaruh (1-10)", y="Kepercayaan Publik (1-10)",
+                                 size="Pengaruh (1-10)", color="Kategori", text="Aktor",
+                                 title="Peta Aktor – Pengaruh vs. Kepercayaan Publik",
+                                 color_discrete_sequence=COLORS_MAIN, size_max=40)
+        fig_actors.update_traces(textposition="top center", textfont_size=10)
+        fig_actors.update_layout(
+            plot_bgcolor="white", paper_bgcolor="white",
+            font=dict(family="Plus Jakarta Sans", size=11),
+            title_font=dict(family="Sora", size=14),
+            margin=dict(t=60, b=20)
         )
-        fig_ak.update_traces(textposition="outside", textfont=dict(color="#1B2A4A",size=12))
-        fig_ak.update_layout(**PLOT_LAYOUT, showlegend=False, height=320,
-                             coloraxis_showscale=False,
-                             yaxis=dict(autorange="reversed", **PLOT_LAYOUT["yaxis"]))
-        st.plotly_chart(fig_ak, use_container_width=True)
+        st.plotly_chart(fig_actors, use_container_width=True)
 
-    with col_d:
-        st.markdown("#### 🔍 Pernyataan Kunci — Konflik Bersenjata")
-        krf_rows = df_i[df_i["Tanggapan"].str.contains(
-            "egianus|bersenjata|papua merdeka|nduga|separatis|penyanderaan",
-            case=False,na=False)].head(4)
-        for _, row in krf_rows.iterrows():
-            txt = str(row["Tanggapan"])[:290]+"…" if len(str(row["Tanggapan"]))>290 else str(row["Tanggapan"])
-            st.markdown(f"""<div class='qbox'>&ldquo;{txt}&rdquo;
-            <br><small>— {row.get('Narsum','')} | {row.get('Wilayah','')}</small></div>""",
-                        unsafe_allow_html=True)
+    with col_a2:
+        st.markdown("**Pandangan Masyarakat terhadap Aktor:**")
+        actor_quotes = [
+            ("Dewan Gereja", "Masyarakat biasanya menghargai dan mendengar."),
+            ("WVI", "Masyarakat sangat berterima kasih karena WVI turun langsung ke orang tua dan anak-anak."),
+            ("Kepala Kampung", "Tidak peduli dengan masyarakat dan kurang dipercaya masyarakat."),
+            ("Pemerintah", "Pola pikir masyarakat: 'Kalau tidak dapat bantuan, kalian balik saja.'"),
+        ]
+        for aktor, q in actor_quotes:
+            st.markdown(f'<div class="quote-box"><span class="tag">{aktor}</span> "{q}"</div>', unsafe_allow_html=True)
 
-    # ── ISU 3: NARKOBA & HIV ANAK ─────────────────────────────────────
-    st.markdown("<div class='sec-hdr'>💊 Isu 3 — Narkoba, Aibon & HIV pada Anak (Sentani)</div>",
-                unsafe_allow_html=True)
-    col_e, col_f = st.columns(2)
-    with col_e:
-        nar_d = {
-            "Narkoba di Sekolah (BNN)":     df_i["Tanggapan"].str.contains("narkoba.*sekolah|pemeriksaan.*bnn",case=False,na=False).sum(),
-            "Aibon di Jalanan":             df_i["Tanggapan"].str.contains("aibon",case=False,na=False).sum(),
-            "Kasus HIV pada Anak SD":       df_i["Tanggapan"].str.contains("hiv|aids",case=False,na=False).sum(),
-            "Program Rehabilitasi":         df_i["Tanggapan"].str.contains("rehabilitasi|mantan pengguna|rehab",case=False,na=False).sum(),
-            "Pencurian akibat Narkoba":     df_i["Tanggapan"].str.contains("pencurian.*helm|membeli.*narkoba|membeli.*aibon",case=False,na=False).sum(),
-            "Broken Home → Narkoba":        df_i["Tanggapan"].str.contains("broken home|keluarga.*narkoba",case=False,na=False).sum(),
-        }
-        df_nd = pd.DataFrame(list(nar_d.items()),columns=["Isu","Jumlah"])
-        df_nd = df_nd[df_nd["Jumlah"]>0].sort_values("Jumlah")
-        fig_nd = px.bar(
-            df_nd, x="Jumlah", y="Isu", orientation="h",
-            color="Jumlah", color_continuous_scale=C_SEQ_OR,
-            title="Isu Narkoba & Zat Berbahaya pada Anak-Remaja",
-            text="Jumlah",
-        )
-        fig_nd.update_traces(textposition="outside", textfont=dict(color="#1B2A4A",size=12))
-        fig_nd.update_layout(**PLOT_LAYOUT, showlegend=False, height=340,
-                             coloraxis_showscale=False,
-                             yaxis=dict(autorange="reversed", **PLOT_LAYOUT["yaxis"]))
-        st.plotly_chart(fig_nd, use_container_width=True)
+    st.divider()
 
-    with col_f:
-        st.markdown("#### 🔴 Pernyataan Narasumber — Dinas Sosial & Dinas Pendidikan")
-        nar_rows = df_i[df_i["Tanggapan"].str.contains(
-            "narkoba|aibon|hiv|rehabilitasi|bnn|pencandu",
-            case=False,na=False)].head(4)
-        for _, row in nar_rows.iterrows():
-            txt = str(row["Tanggapan"])[:280]+"…" if len(str(row["Tanggapan"]))>280 else str(row["Tanggapan"])
-            st.markdown(f"""<div class='qbox qbox-orange'>&ldquo;{txt}&rdquo;
-            <br><small>— {row.get('Narsum','')} | {row.get('Wilayah','')}</small></div>""",
-                        unsafe_allow_html=True)
+    # ── ISU 4 KII: Rekomendasi Pembinaan Perdamaian ──
+    st.markdown("### 🟢 Isu 4 · Rekomendasi Kegiatan Pembinaan Perdamaian")
+    st.markdown("""
+    <div class="issue-card">
+        <div class="issue-title">☮️ Intervensi Multidimensi: Jangka Pendek, Menengah, dan Panjang</div>
+        <div class="issue-desc">KII merekomendasikan pendekatan berlapis: jangka pendek (posko ramah anak, 
+        konseling trauma, bantuan gizi darurat), jangka menengah (program sekolah aman, pelatihan guru trauma, 
+        forum pemuda produktif), dan jangka panjang (beasiswa, kurikulum damai berbasis lokal, 
+        unit perlindungan anak daerah). Dialog berbasis adat dan tokoh gereja sebagai co-host dinilai kunci 
+        untuk penerimaan komunitas.</div>
+    </div>
+    """, unsafe_allow_html=True)
 
-    # ── ISU 4: KONFLIK LAHAN & PSN ────────────────────────────────────
-    st.markdown("<div class='sec-hdr'>🌿 Isu 4 — Konflik Lahan & Proyek Strategis Nasional (Asmat)</div>",
-                unsafe_allow_html=True)
-    col_g, col_h = st.columns([3,2])
-    with col_g:
-        psn = {
-            "Deforestasi & Lahan Gambut":        df_i["Tanggapan"].str.contains("deforestasi|gambut|rawa|lahan.*terbuka",case=False,na=False).sum(),
-            "Penggusuran / Penolakan Lahan Adat": df_i["Tanggapan"].str.contains("penggusuran|penolakan|ulayat|hak adat",case=False,na=False).sum(),
-            "Food Estate / Tebu (PSN)":           df_i["Tanggapan"].str.contains("food estate|tebu|psn|proyek strategis",case=False,na=False).sum(),
-            "Aparat Dianggap Intimidatif":        df_i["Tanggapan"].str.contains("intimidatif|intimidasi|pengamanan.*ketat",case=False,na=False).sum(),
-            "Masyarakat Adat vs Korporasi":       df_i["Tanggapan"].str.contains("korporasi|masyarakat adat.*konflik",case=False,na=False).sum(),
-            "Kerusakan Ekosistem":                df_i["Tanggapan"].str.contains("ekosida|ekologi|lingkungan.*rusak",case=False,na=False).sum(),
-        }
-        df_psn = pd.DataFrame(list(psn.items()),columns=["Aspek","Jumlah"])
-        df_psn = df_psn[df_psn["Jumlah"]>0].sort_values("Jumlah")
-        fig_psn = px.bar(
-            df_psn, x="Jumlah", y="Aspek", orientation="h",
-            color="Jumlah", color_continuous_scale=C_SEQ_GN,
-            title="Dimensi Konflik Lahan & PSN yang Dilaporkan KII",
-            text="Jumlah",
-        )
-        fig_psn.update_traces(textposition="outside", textfont=dict(color="#1B2A4A",size=12))
-        fig_psn.update_layout(**PLOT_LAYOUT, showlegend=False, height=360,
-                              coloraxis_showscale=False,
-                              yaxis=dict(autorange="reversed", **PLOT_LAYOUT["yaxis"]))
-        st.plotly_chart(fig_psn, use_container_width=True)
+    peace_kws = {
+        "Psikososial / Trauma": ["trauma", "psikososial", "konseling", "pemulihan", "dukungan"],
+        "Pendidikan Perdamaian": ["kurikulum damai", "edukasi perdamaian", "sekolah aman", "pelatihan guru"],
+        "Pemberdayaan Ekonomi": ["ekonomi lokal", "pemberdayaan", "kapasitas", "beasiswa"],
+        "Dialog & Mediasi Adat": ["dialog", "mediasi", "adat", "para-para", "musyawarah"],
+        "Pelibatan Pemuda": ["pemuda", "olahraga", "seni", "penggerak damai", "remaja produktif"],
+        "Advokasi Hak": ["advokasi", "hak ulayat", "hak adat", "pemetaan"],
+        "Perlindungan Anak": ["perlindungan anak", "ramah anak", "unit perlindungan"],
+    }
 
-    with col_h:
-        st.markdown("#### 📣 Suara Narasumber tentang PSN & Lahan")
-        psn_rows = df_i[df_i["Tanggapan"].str.contains(
-            "food estate|penggusuran|deforestasi|ulayat|psn|korporasi|ekosida",
-            case=False,na=False)].head(4)
-        for _, row in psn_rows.iterrows():
-            txt = str(row["Tanggapan"])[:260]+"…" if len(str(row["Tanggapan"]))>260 else str(row["Tanggapan"])
-            st.markdown(f"""<div class='qbox qbox-green'>&ldquo;{txt}&rdquo;
-            <br><small>— {row.get('Narsum','')} | {row.get('Wilayah','')}</small></div>""",
-                        unsafe_allow_html=True)
+    peace_q = dfkii["Pertanyaan"].str.contains("perdamaian|pembinaan|kontribusi|bisa kami", case=False, na=False)
+    df_peace = count_keyword_hits(dfkii[peace_q]["Tanggapan"], peace_kws)
+    df_peace = df_peace[df_peace["Jumlah"] > 0]
 
-    # ── ISU 5: KUALITAS PENDIDIKAN ────────────────────────────────────
-    st.markdown("<div class='sec-hdr'>📚 Isu 5 — Krisis Kualitas Pendidikan & Tata Kelola Guru</div>",
-                unsafe_allow_html=True)
-    col_i, col_j = st.columns(2)
-    with col_i:
-        pend = {
-            "Guru Mengajar Demi Gaji Saja":   df_i["Tanggapan"].str.contains("panggilan.*guru|guru.*panggilan|hanya.*rutinitas|hanya.*gaji",case=False,na=False).sum(),
-            "Honor Guru Terlambat":           df_i["Tanggapan"].str.contains("honor.*terlambat|terlambat.*honor|apbd.*tidak cukup",case=False,na=False).sum(),
-            "PAUD Tidak Fungsional":          df_i["Tanggapan"].str.contains("paud.*tidak berjalan|tidak ada tenaga|bup.*bantuan",case=False,na=False).sum(),
-            "Bangunan PAUD Bermasalah":       df_i["Tanggapan"].str.contains("rumah pribadi|sertifikat.*gedung|bangunan.*paud",case=False,na=False).sum(),
-            "Putus Sekolah akibat Konflik":   df_i["Tanggapan"].str.contains("putus sekolah|sekolah.*ditutup|guru.*absen",case=False,na=False).sum(),
-            "Siswa SD Terinfeksi HIV":        df_i["Tanggapan"].str.contains("kelas 5.*hiv|sd.*hiv|hiv.*anak",case=False,na=False).sum(),
-        }
-        df_pd = pd.DataFrame(list(pend.items()),columns=["Isu","Jumlah"])
-        df_pd = df_pd[df_pd["Jumlah"]>0].sort_values("Jumlah")
-        fig_pd = px.bar(
-            df_pd, x="Jumlah", y="Isu", orientation="h",
-            color="Jumlah", color_continuous_scale=C_SEQ_BL,
-            title="Isu Pendidikan yang Diidentifikasi Narasumber",
-            text="Jumlah",
-        )
-        fig_pd.update_traces(textposition="outside", textfont=dict(color="#1B2A4A",size=12))
-        fig_pd.update_layout(**PLOT_LAYOUT, showlegend=False, height=340,
-                             coloraxis_showscale=False,
-                             yaxis=dict(autorange="reversed", **PLOT_LAYOUT["yaxis"]))
-        st.plotly_chart(fig_pd, use_container_width=True)
+    col_p1, col_p2 = st.columns(2)
+    with col_p1:
+        if not df_peace.empty:
+            fig = bar_chart(df_peace, "Tema", "Jumlah", "Tema Rekomendasi Pembinaan Perdamaian – KII")
+            st.plotly_chart(fig, use_container_width=True)
 
-    with col_j:
-        ske = {
-            "Keamanan Fluktuatif":      df_i["Tanggapan"].str.contains("keamanan.*fluktuatif|rawan.*konflik|keamanan.*terkendali",case=False,na=False).sum(),
-            "Krisis Pangan / Inflasi":  df_i["Tanggapan"].str.contains("pangan|inflasi|harga.*naik|logistik.*terganggu",case=False,na=False).sum(),
-            "Trauma Psikososial":       df_i["Tanggapan"].str.contains("trauma|psikososial|ketakutan|kecemasan",case=False,na=False).sum(),
-            "Putus Sekolah Sementara":  df_i["Tanggapan"].str.contains("putus sekolah|absensi.*sekolah|sekolah.*ditutup",case=False,na=False).sum(),
-            "Konflik Lahan Meningkat":  df_i["Tanggapan"].str.contains("lahan.*meningkat|sengketa.*lahan|konflik.*lahan",case=False,na=False).sum(),
-        }
-        df_sk = pd.DataFrame(list(ske.items()),columns=["Skenario","Jumlah"])
-        df_sk = df_sk[df_sk["Jumlah"]>0].sort_values("Jumlah",ascending=False)
-        fig_sk = px.bar(
-            df_sk, x="Skenario", y="Jumlah",
-            color="Jumlah", color_continuous_scale=C_SEQ_OR,
-            title="Proyeksi Risiko 6 Bulan ke Depan (menurut KII)",
-            text="Jumlah",
-        )
-        fig_sk.update_traces(textposition="outside", textfont=dict(color="#1B2A4A",size=11))
-        fig_sk.update_layout(**PLOT_LAYOUT, showlegend=False, height=340,
-                             coloraxis_showscale=False, xaxis_tickangle=-20)
-        st.plotly_chart(fig_sk, use_container_width=True)
+    with col_p2:
+        # Per narsum breakdown
+        df_peace_ns = []
+        for ns in dfkii["Narsum"].unique():
+            sub = dfkii[dfkii["Narsum"] == ns]
+            sub_peace = sub[sub["Pertanyaan"].str.contains("perdamaian|pembinaan|kontribusi", case=False, na=False)]["Tanggapan"]
+            for label, kws in peace_kws.items():
+                pattern = "|".join(kws)
+                cnt = sub_peace.str.lower().str.contains(pattern, na=False).sum()
+                if cnt > 0:
+                    df_peace_ns.append({"Narsum": ns, "Tema": label, "Jumlah": cnt})
+        df_peace_ns = pd.DataFrame(df_peace_ns)
+        if not df_peace_ns.empty:
+            fig2 = px.bar(df_peace_ns, x="Narsum", y="Jumlah", color="Tema", barmode="stack",
+                          title="Rekomendasi per Narasumber", color_discrete_sequence=COLORS_MAIN)
+            fig2.update_layout(
+                plot_bgcolor="white", paper_bgcolor="white",
+                font=dict(family="Plus Jakarta Sans", size=11),
+                title_font=dict(family="Sora", size=14),
+                margin=dict(t=50, b=20)
+            )
+            st.plotly_chart(fig2, use_container_width=True)
 
-    # ── HEATMAP KII ───────────────────────────────────────────────────
-    st.markdown("<div class='sec-hdr'>🗺️ Intensitas Isu KII per Wilayah (Heatmap)</div>",
-                unsafe_allow_html=True)
-    twi = FI_.groupby(["Wilayah","Tema_List"]).size().reset_index(name="Jumlah")
-    twi = twi[twi["Tema_List"]!="Kehidupan Sehari-hari & Lainnya"]
-    pivot_i = twi.pivot(index="Tema_List",columns="Wilayah",values="Jumlah").fillna(0)
-    fig_hmi = px.imshow(
-        pivot_i, color_continuous_scale="Blues",
-        title="Intensitas Isu per Wilayah — KII (Narasumber Pemerintah)",
-        aspect="auto", text_auto=True,
-    )
-    fig_hmi.update_traces(textfont=dict(color="#1B2A4A", size=12))
-    fig_hmi.update_layout(**PLOT_LAYOUT, height=380)
-    st.plotly_chart(fig_hmi, use_container_width=True)
+    st.divider()
 
-    with st.expander("📋 Lihat Data Mentah — Dataset KII"):
-        st.dataframe(FI[["Wilayah","Narsum","Pertanyaan","Tanggapan"]],
-                     use_container_width=True, height=340)
+    # ── ISU 5 KII: Skenario & Dampak bagi LSM ──
+    st.markdown("### 🔵 Isu 5 · Skenario Masa Depan & Implikasi bagi Operasional LSM")
+    st.markdown("""
+    <div class="issue-card">
+        <div class="issue-title">📈 6 Bulan ke Depan: Risiko Eskalasi & Window of Opportunity</div>
+        <div class="issue-desc">KII memproyeksikan bahwa situasi politik pascapemilu relatif stabil di tingkat makro, 
+        namun di level kampung terdapat risiko: dana bantuan yang cair cepat habis tanpa tabungan, 
+        Linmas tidak berjaga rutin, dan kepercayaan terhadap pemerintah kampung sangat rendah. 
+        Di Asmat, PSN Pangan dan deforestasi masif berpotensi memicu konflik lahan baru. 
+        Untuk operasional LSM, rekomendasinya adalah membangun "Community Acceptance Strategy" 
+        berbasis tokoh adat, contingency plan beralih ke metode daring/radio komunitas, 
+        dan program WVI perlu diselaraskan dengan rapat kampung agar tidak dianggap proyek eksternal.</div>
+    </div>
+    """, unsafe_allow_html=True)
 
-# ══════════════════════════════════════════════════════════════════════
-# TAB 3 — LAPORAN EKSEKUTIF
-# ══════════════════════════════════════════════════════════════════════
+    scenario_kii_kws = {
+        "Stabilitas Terjaga": ["stabil", "terkendali", "aman", "sukses", "damai"],
+        "Risiko Konflik Lahan": ["lahan", "ulayat", "deforestasi", "psn", "konflik baru"],
+        "Risiko Ekonomi / Inflasi": ["inflasi", "pangan", "logistik", "harga", "krisis"],
+        "Risiko Politik Lokal": ["pilkada", "pemilu", "kepala kampung", "kepercayaan rendah"],
+        "Peluang Pembangunan": ["pembangunan", "infrastruktur", "investasi", "kapasitas"],
+        "Hambatan Operasional LSM": ["palang", "akses", "hambatan", "keamanan operasi"],
+    }
+
+    sc_q_kii = dfkii["Pertanyaan"].str.contains("skenario|6 bulan|konsekuensi|operasional", case=False, na=False)
+    df_sc_kii = count_keyword_hits(dfkii[sc_q_kii]["Tanggapan"], scenario_kii_kws)
+    df_sc_kii = df_sc_kii[df_sc_kii["Jumlah"] > 0]
+
+    col_sc1, col_sc2 = st.columns(2)
+    with col_sc1:
+        if not df_sc_kii.empty:
+            colors_sc = ["#27ae60" if "Stab" in t or "Peluang" in t else "#e74c3c" for t in df_sc_kii["Tema"]]
+            fig_sc2 = go.Figure(go.Bar(
+                x=df_sc_kii["Jumlah"], y=df_sc_kii["Tema"],
+                orientation="h", marker_color=colors_sc,
+                text=df_sc_kii["Jumlah"], textposition="outside"
+            ))
+            fig_sc2.update_layout(
+                title="Sebutan Faktor Risiko vs Peluang – Perspektif KII",
+                plot_bgcolor="white", paper_bgcolor="white",
+                font=dict(family="Plus Jakarta Sans", size=11),
+                title_font=dict(family="Sora", size=14),
+                margin=dict(t=50, b=20, l=200, r=60)
+            )
+            st.plotly_chart(fig_sc2, use_container_width=True)
+
+    with col_sc2:
+        st.markdown("**Kutipan KII – Proyeksi & Rekomendasi:**")
+        kii_sc_quotes = [
+            ("Asmat | WBW", "Sidang MPL PGI Februari 2026 menolak PSN pangan dan militerisme. Deforestasi masif menghancurkan sumber pangan alami masyarakat adat."),
+            ("Asmat | RJF", "Contingency Plan: alih metode ke daring/radio komunitas bila perlu. Stakeholder Engagement Map per distrik: adat–agama–pemda–aparat."),
+            ("Sentani | Dinas Sosial", "Program WVI diselaraskan dengan program kampung agar diketahui saat rapat kampung."),
+            ("Jayawijaya | GTY", "Edukasi perdamaian berbasis komunitas akar rumput dengan melibatkan tokoh lokal sebagai agen perubahan."),
+        ]
+        for narsum, q in kii_sc_quotes:
+            st.markdown(f'<div class="quote-box"><span class="tag">{narsum}</span> {q}</div>', unsafe_allow_html=True)
+
+
+# ══════════════════════════════════════════════
+# TAB 3: PERBANDINGAN & LAPORAN EKSEKUTIF
+# ══════════════════════════════════════════════
 with tab3:
+    st.markdown('<div class="section-header">📊 Perbandingan Perspektif & Laporan Eksekutif</div>', unsafe_allow_html=True)
 
-    st.markdown("## 📄 Laporan Eksekutif — Analisis Isu Papua (GECAR 2024–2025)")
-    st.markdown("---")
+    # ── Radar Chart Perbandingan ──
+    st.markdown("### 🔍 Perbandingan Isu Utama: Perspektif Masyarakat vs. KII Pemerintah")
 
-    st.markdown("""<div class='sec-hdr'>🧩 BAGIAN A — ISU UTAMA: MASYARAKAT (FGD Kelompok)</div>""",
-                unsafe_allow_html=True)
+    shared_dimensions = ["Narkoba / Zat Berbahaya", "Korupsi / Dana Desa", "Kekerasan & Kriminalitas",
+                          "Kebutuhan Pendidikan", "Kebutuhan Kesehatan", "Konflik Lahan / Adat",
+                          "Harapan pada Pemuda", "Kepercayaan pada Pemerintah"]
 
-    issues_k = [
-        ("icard",        "🔴 ISU 1 — Kekerasan Domestik sebagai Ketakutan Utama Anak",
-         "Responden anak dari ketiga wilayah menyebut <b>kekerasan fisik dari orang tua</b> sebagai ketakutan nomor satu, "
-         "melebihi konflik sosial maupun bencana alam. Anak-anak melaporkan melarikan diri ke rumah nenek atau ke gereja "
-         "untuk menghindari kekerasan. Ini merupakan sinyal kuat bahwa <b>program parenting positif dan perlindungan anak "
-         "di tingkat komunitas sangat mendesak</b>."),
-        ("icard icard-orange","🍺 ISU 2 — Miras sebagai Pemicu Utama Kekerasan Komunitas",
-         "Miras disebut sebagai penyebab langsung kekerasan fisik, pencurian, perselingkuhan, dan perang suku di seluruh "
-         "wilayah. Di Asmat, miras terkait kekerasan saat dana bantuan cair. Di Sentani, dikaitkan dengan kenakalan remaja "
-         "dan pelecehan perempuan. Di Jayawijaya, miras memicu perang suku yang berujung pembunuhan. Pola lintas wilayah ini "
-         "menunjukkan miras sebagai <b>amplifier kerentanan</b> yang membutuhkan regulasi dan program alternatif sosial."),
-        ("icard icard-orange","💸 ISU 3 — Korupsi Sistemik Dana Bantuan (BLT) oleh Oknum Kepala Kampung",
-         "Masyarakat Asmat melaporkan: BLT dipotong Rp200.000–300.000/KK untuk kepentingan pribadi; kepala kampung "
-         "dipilih langsung oleh bupati karena merupakan tim sukses; penerima manfaat dicoret jika tidak memihak kepala "
-         "kampung. Ini adalah <b>korupsi berjamaah terstruktur</b> yang merusak kepercayaan masyarakat terhadap "
-         "seluruh sistem pemerintahan kampung."),
-        ("icard icard-blue","📚 ISU 4 — Pendidikan Terganggu oleh Konflik, Kemiskinan & Kurangnya Pendampingan",
-         "Anak-anak putus sekolah akibat pemalangan jalan, konflik, kemiskinan yang memaksa bekerja, serta kurangnya "
-         "dukungan orang tua. Bagi responden anak, <b>sekolah adalah ruang aman satu-satunya</b> dari kekerasan di "
-         "rumah dan komunitas. Akses pendidikan yang terputus berarti hilangnya perlindungan sosial utama mereka."),
-        ("icard icard-green","🌱 ISU 5 — Potensi Pemuda yang Belum Difasilitasi",
-         "Responden muda menunjukkan kesadaran tinggi: berkontribusi di rumah baca, mengajar adik, berperan di gereja, "
-         "memotivasi teman yang putus sekolah. Namun potensi ini <b>belum difasilitasi secara terstruktur</b>. "
-         "Harapan mereka konkret: lapangan olahraga, alat musik, kegiatan bazaar, dan forum kepemudaan aktif."),
-    ]
-    for cls, title, body in issues_k:
-        st.markdown(f"""<div class='{cls}'><b>{title}</b><br><br>{body}</div>""",
-                    unsafe_allow_html=True)
+    keywords_shared = {
+        "Narkoba / Zat Berbahaya": ["narkoba", "aibon", "ganja", "mabuk", "miras"],
+        "Korupsi / Dana Desa": ["dana desa", "kepala kampung", "korupsi", "simpatisan", "musrenbang", "nepotisme"],
+        "Kekerasan & Kriminalitas": ["kekerasan", "pencurian", "begal", "dipukul", "kriminal"],
+        "Kebutuhan Pendidikan": ["sekolah", "pendidikan", "belajar", "guru"],
+        "Kebutuhan Kesehatan": ["kesehatan", "imunisasi", "puskesmas", "rs", "hamil"],
+        "Konflik Lahan / Adat": ["tanah", "lahan", "adat", "ulayat", "sengketa"],
+        "Harapan pada Pemuda": ["pemuda", "generasi", "kontribusi", "berkontribusi"],
+        "Kepercayaan pada Pemerintah": ["pemerintah", "bupati", "dinas", "aparat"],
+    }
 
-    st.markdown("---")
-    st.markdown("""<div class='sec-hdr'>🏛️ BAGIAN B — ISU UTAMA: NARASUMBER PEMERINTAH (KII)</div>""",
-                unsafe_allow_html=True)
+    scores_k, scores_kii = [], []
+    for dim, kws in keywords_shared.items():
+        pattern = "|".join(kws)
+        sc_k = dfk["Tanggapan"].str.lower().str.contains(pattern, na=False).sum()
+        sc_kii = dfkii["Tanggapan"].str.lower().str.contains(pattern, na=False).sum()
+        scores_k.append(sc_k)
+        scores_kii.append(sc_kii)
 
-    issues_i = [
-        ("icard",             "🔫 ISU 1 — Konflik Bersenjata Kelompok Separatis di Jayawijaya",
-         "Narasumber GTY, JPY, ACL mengidentifikasi kelompok sipil bersenjata pimpinan Egianus Kogoya sebagai ancaman "
-         "utama di Nduga dan Jayawijaya — berstruktur militer-politik, memiliki jaringan internasional di Pasifik Selatan. "
-         "Anak-anak menjadi korban tidak langsung melalui <b>keterbatasan akses pendidikan dan trauma berkepanjangan</b>. "
-         "Pembebasan pilot Susi Air (2024) membuktikan komunikasi berbasis kemanusiaan lebih efektif dari pendekatan militer."),
-        ("icard icard-orange","💊 ISU 2 — Krisis Narkoba & HIV pada Anak di Sentani",
-         "Dinas Sosial dan Dinas Pendidikan Sentani melaporkan: anak SD menggunakan narkoba (ditemukan BNN); anak-anak "
-         "menghirup aibon di jalanan; <b>siswa kelas 5 SD terinfeksi HIV/AIDS</b> (diduga korban kekerasan seksual "
-         "berbasis alkohol/narkoba); fasilitas rehabilitasi sangat terbatas. Akar masalah: keluarga broken home, "
-         "tidak ada ruang bermain gratis, dan lemahnya pengawasan. Butuh <b>intervensi lintas sektor yang mendesak</b>."),
-        ("icard icard-green", "🌿 ISU 3 — Konflik Lahan & Ekosida: PSN vs Masyarakat Adat (Asmat/Merauke)",
-         "PSN food estate dan perkebunan tebu di Papua Selatan menyebabkan: deforestasi lahan gambut/rawa, penggusuran "
-         "masyarakat adat tanpa konsultasi, konflik identitas Malind vs Mappi/Asmat dalam perebutan birokrasi, serta "
-         "kehadiran militer yang dianggap intimidatif. Masyarakat adat memandang tanah sebagai <b>sakral secara budaya</b>. "
-         "Berpotensi eskalasi jika tidak ada audit sosial yang transparan dan partisipatif."),
-        ("icard icard-blue",  "📚 ISU 4 — Kualitas Pendidikan Rendah: Guru Demi Gaji, PAUD Fiktif",
-         "Dinas Pendidikan Sentani: guru OAP mengajar <i>'hanya sebagai rutinitas dan mengincar gaji, bukan panggilan.'</i> "
-         "PAUD dibuka hanya untuk dana BUP tanpa tenaga bersertifikat; bangunannya rumah pribadi yang tidak lolos syarat "
-         "pencairan. Honor guru sering terlambat karena APBD tidak mencukupi. Kondisi ini menghasilkan "
-         "<b>generasi yang kehilangan fondasi pendidikan sejak usia dini</b>."),
-        ("icard icard-purple","📈 ISU 5 — Inflasi Tertinggi Nasional & Ketergantungan Jalur Udara",
-         "BPS 2024: Papua Pegunungan mencatat <b>inflasi tertinggi nasional 5,65%</b>. Wamena sebagai pintu udara utama "
-         "sangat rentan: setiap gangguan cuaca, keamanan, atau logistik langsung memicu kenaikan harga dan keresahan sosial. "
-         "Narasumber menekankan perlunya <b>stok logistik buffer dan alternatif jalur distribusi</b> sebagai prioritas."),
-    ]
-    for cls, title, body in issues_i:
-        st.markdown(f"""<div class='{cls}'><b>{title}</b><br><br>{body}</div>""",
-                    unsafe_allow_html=True)
+    # Normalize 0-10
+    max_k = max(scores_k) if max(scores_k) > 0 else 1
+    max_kii = max(scores_kii) if max(scores_kii) > 0 else 1
+    norm_k = [round(x / max_k * 10, 1) for x in scores_k]
+    norm_kii = [round(x / max_kii * 10, 1) for x in scores_kii]
 
-    st.markdown("---")
-    st.markdown("""<div class='sec-hdr'>✅ REKOMENDASI STRATEGIS UNTUK WVI & MITRA PROGRAM</div>""",
-                unsafe_allow_html=True)
-
-    col1, col2 = st.columns(2)
-    with col1:
-        st.markdown("""
-        **🏠 Perlindungan Anak & Pengasuhan Positif**
-        - Program parenting positif untuk mengurangi kekerasan domestik
-        - Posko ramah anak dan konseling berbasis komunitas
-        - Pusat kegiatan pemuda yang terjangkau dan aman
-
-        **💊 Intervensi Narkoba & Kesehatan Remaja**
-        - Kerjasama WVI–BNN untuk penyuluhan aktif di sekolah
-        - Dukungan fasilitasi ruang rehabilitasi komunitas
-        - Edukasi kesehatan reproduksi & HIV untuk remaja
-
-        **📚 Penguatan Pendidikan & Kapasitas Guru**
-        - Program penyegaran guru: "Mengajar sebagai Panggilan"
-        - Advokasi perbaikan status bangunan PAUD (syarat administrasi)
-        - Beasiswa dan program mentoring anak putus sekolah
-        """)
-    with col2:
-        st.markdown("""
-        **💸 Akuntabilitas Dana Bantuan**
-        - Mekanisme pelaporan warga atas penyalahgunaan BLT
-        - Advokasi transparansi distribusi dana desa ke pemerintah
-        - Pemberdayaan BAMUSKAM sebagai checks & balances
-
-        **🌿 Advokasi Lahan & Pembangunan Damai**
-        - Pendampingan hukum berbasis HAM untuk masyarakat adat Asmat
-        - Dialog "Para-Para Adat" untuk mediasi konflik lokal
-        - Dorong audit sosial PSN sebelum ekspansi proyek
-
-        **🔐 Ketahanan Pangan & Logistik**
-        - Program tabungan komunitas (ASKA) untuk antisipasi krisis pangan
-        - Pengembangan kebun komunal & kelompok tani sebagai buffer lokal
-        - Koordinasi stok pangan buffer dengan pemerintah daerah
-        """)
-
-    st.markdown("---")
-    st.caption(
-        "📊 Dashboard ini dibuat berdasarkan analisis data kualitatif GECAR 2024–2025. "
-        "Frekuensi mencerminkan kemunculan tema dalam tanggapan, bukan persentase absolut. "
-        "Data dikumpulkan dari Jayawijaya, Sentani, dan Asmat, Papua."
+    fig_radar = go.Figure()
+    fig_radar.add_trace(go.Scatterpolar(
+        r=norm_k + [norm_k[0]], theta=shared_dimensions + [shared_dimensions[0]],
+        fill="toself", name="Kelompok Masyarakat",
+        line=dict(color="#e74c3c", width=2), fillcolor="rgba(231,76,60,0.15)"
+    ))
+    fig_radar.add_trace(go.Scatterpolar(
+        r=norm_kii + [norm_kii[0]], theta=shared_dimensions + [shared_dimensions[0]],
+        fill="toself", name="KII Pemerintah/Lembaga",
+        line=dict(color="#2980b9", width=2), fillcolor="rgba(41,128,185,0.15)"
+    ))
+    fig_radar.update_layout(
+        polar=dict(radialaxis=dict(visible=True, range=[0, 10], gridcolor="#eee"),
+                   angularaxis=dict(gridcolor="#eee")),
+        showlegend=True, title="Perbandingan Fokus Isu – Kelompok vs. KII (Skor Relatif 0-10)",
+        paper_bgcolor="white", font=dict(family="Plus Jakarta Sans", size=11),
+        title_font=dict(family="Sora", size=15),
+        margin=dict(t=60, b=40)
     )
+    st.plotly_chart(fig_radar, use_container_width=True)
+
+    st.divider()
+
+    # ── Tabel Perbandingan ──
+    st.markdown("### 📋 Ringkasan Perbandingan Isu per Wilayah")
+    comparison_data = {
+        "Wilayah": ["Jayawijaya", "Asmat (Papua Selatan)", "Sentani"],
+        "Isu Utama Masyarakat": [
+            "Miras, judol, aibon, perang suku, kurang pendidikan karakter anak",
+            "Korupsi kepala kampung, distribusi bantuan tidak merata, kebutuhan air bersih & infrastruktur",
+            "Sengketa tanah, kenakalan remaja, kekerasan dalam keluarga (KDRT pada anak perempuan)",
+        ],
+        "Isu Utama KII": [
+            "Nepotisme birokrasi, kesenjangan OAP vs pendatang, potensi eskalasi politik",
+            "Hak adat terancam PSN/deforestasi, distribusi bantuan tidak transparan, trauma sosial",
+            "Narkoba & aibon pada anak, HIV anak SD, keterbatasan fasilitas rehabilitasi",
+        ],
+        "Titik Konvergensi": [
+            "Anak-anak rentan: putus sekolah & dilibatkan konflik",
+            "Ketidakadilan distribusi bantuan & lemahnya tata kelola kampung",
+            "Minimnya ruang aman bagi anak & remaja",
+        ],
+        "Tokoh Kunci": [
+            "Kepala suku, tokoh agama, pemimpin gereja",
+            "Dewan adat, gereja, kepala marga",
+            "Kepala kampung, pendeta, Dinas Sosial",
+        ]
+    }
+    df_compare = pd.DataFrame(comparison_data)
+    st.dataframe(df_compare, use_container_width=True, hide_index=True)
+
+    st.divider()
+
+    # ── LAPORAN EKSEKUTIF ──
+    st.markdown("### 📄 Laporan Eksekutif")
+    st.markdown("""
+    <div style="background:white; border-radius:14px; padding:32px 36px; 
+                box-shadow:0 2px 12px rgba(0,0,0,0.07); line-height:1.8;">
+    
+    <h2 style="font-family:Sora,sans-serif; color:#1a1a2e; border-bottom:3px solid #c0392b; 
+               padding-bottom:12px; margin-bottom:24px;">
+        Laporan Eksekutif: Analisis Isu GECAR Papua
+    </h2>
+    
+    <h3 style="color:#c0392b; font-family:Sora,sans-serif;">1. Lingkaran Setan: Zat Berbahaya → Kriminalitas → Kemiskinan</h3>
+    <p>Isu yang paling konsisten muncul dari seluruh wilayah—baik di perspektif masyarakat maupun KII—adalah 
+    penyalahgunaan zat berbahaya (miras/mabuk, aibon, ganja, narkoba) sebagai pemicu kriminalitas dan kekerasan. 
+    Di Jayawijaya, miras menjadi awal dari perang suku dan begal. Di Sentani, Dinas Sosial menemukan anak SD 
+    terinfeksi HIV yang diduga akibat kekerasan seksual dipicu alkohol/narkoba. Di Asmat, orang yang mabuk 
+    saat dana bantuan cair langsung memicu keributan. Rantai ini menciptakan lingkaran setan: kemiskinan 
+    mendorong konsumsi zat, zat mendorong kriminalitas, kriminalitas memperburuk kemiskinan komunitas.</p>
+    
+    <h3 style="color:#c0392b; font-family:Sora,sans-serif;">2. Krisis Kepercayaan pada Pemerintah Kampung & Ketidakadilan Distribusi</h3>
+    <p>Baik masyarakat maupun KII mengidentifikasi krisis tata kelola di tingkat kampung sebagai isu krusial. 
+    Kepala kampung Asmat dideskripsikan sebagai "anti masyarakat"—bantuan dipotong di distrik dan kampung, 
+    musrenbang diabaikan, dan pengadaan hanya untuk simpatisan politik. Kepala kampung Birak bahkan meminta 
+    langsung dipilih oleh bupati (bukan oleh masyarakat). KII menyebut ini "nepotisme birokrasi yang 
+    memperkuat ketidakpercayaan." Situasi ini menimbulkan paradoks: masyarakat butuh bantuan pemerintah 
+    tetapi tidak percaya pada mekanisme distribusinya.</p>
+    
+    <h3 style="color:#c0392b; font-family:Sora,sans-serif;">3. Anak-Anak sebagai Kelompok Paling Rentan dengan Paparan Multidimensi</h3>
+    <p>KII dan masyarakat sepakat: anak-anak adalah kelompok paling rentan. Di Jayawijaya, anak usia 10 tahun 
+    sudah diajak perang suku dan memegang senjata tajam—membentuk mentalitas "ketagihan perang seperti main bola." 
+    Di Sentani, 5 dari 9 anak perempuan yang disurvei menyebut kekerasan fisik dari ayah sebagai ketakutan utama. 
+    Di Asmat, anak-anak menggunakan aibon di jalanan. Kondisi ini menegaskan kebutuhan mendesak untuk 
+    program perlindungan anak yang komprehensif—bukan sekadar pendidikan formal.</p>
+    
+    <h3 style="color:#c0392b; font-family:Sora,sans-serif;">4. Hak Adat & Lahan Terancam Proyek Pembangunan</h3>
+    <p>Khusus di Asmat, KII mengidentifikasi ancaman baru yang serius: Proyek Strategis Nasional (PSN) Pangan 
+    yang berjalan tanpa AMDAL transparan dan persetujuan adat telah memicu deforestasi masif, menghancurkan 
+    sumber pangan alami masyarakat adat Malind dan Yeinan. Sidang MPL PGI Februari 2026 menolak PSN ini. 
+    Paradoks "Tanah Kosong" vs. nilai sakral lahan adat adalah akar ketegangan yang belum terselesaikan dan 
+    berpotensi memicu konflik lebih besar dalam 6 bulan ke depan.</p>
+    
+    <h3 style="color:#c0392b; font-family:Sora,sans-serif;">5. Pemuda sebagai Aset Perdamaian yang Belum Dioptimalkan</h3>
+    <p>Di tengah kondisi yang penuh tekanan, masyarakat—khususnya anak muda—mengekspresikan harapan konkret 
+    dan keinginan berkontribusi: mengajar di rumah baca, aktif di gereja, ikut lomba seni dan budaya, 
+    berpartisipasi dalam gotong royong kampung. KII mendorong program "Pemuda Penggerak Damai" melalui 
+    seni/olahraga lintas latar belakang, pelatihan kapasitas, dan pembentukan Komite Damai. 
+    Hambatan utama adalah minimnya ruang publik, lapangan kerja, dan program terstruktur di kampung.</p>
+    
+    <h3 style="color:#1a1a2e; font-family:Sora,sans-serif; margin-top:28px;">Rekomendasi Prioritas</h3>
+    <table style="width:100%; border-collapse:collapse; font-size:0.88rem;">
+        <thead>
+            <tr style="background:#1a1a2e; color:white;">
+                <th style="padding:10px; text-align:left;">Prioritas</th>
+                <th style="padding:10px; text-align:left;">Intervensi</th>
+                <th style="padding:10px; text-align:left;">Wilayah Utama</th>
+                <th style="padding:10px; text-align:left;">Aktor Kunci</th>
+            </tr>
+        </thead>
+        <tbody>
+            <tr style="background:#fdf0ef;">
+                <td style="padding:10px; font-weight:700; color:#c0392b;">🔴 Kritis</td>
+                <td style="padding:10px;">Perlindungan anak dari kekerasan & penyalahgunaan zat (posko ramah anak, konseling trauma)</td>
+                <td style="padding:10px;">Sentani, Asmat</td>
+                <td style="padding:10px;">Dinas Sosial, BNN, WVI</td>
+            </tr>
+            <tr>
+                <td style="padding:10px; font-weight:700; color:#e67e22;">🟠 Mendesak</td>
+                <td style="padding:10px;">Advokasi transparansi dana kampung & mekanisme pengawasan distribusi bantuan</td>
+                <td style="padding:10px;">Asmat, Jayawijaya</td>
+                <td style="padding:10px;">Tokoh adat, LSM, BAMUSKAM</td>
+            </tr>
+            <tr style="background:#fefdf0;">
+                <td style="padding:10px; font-weight:700; color:#d4ac0d;">🟡 Penting</td>
+                <td style="padding:10px;">Pemetaan wilayah adat partisipatif & dialog PSN–masyarakat</td>
+                <td style="padding:10px;">Asmat</td>
+                <td style="padding:10px;">MRP Selatan, Gereja, WVI</td>
+            </tr>
+            <tr>
+                <td style="padding:10px; font-weight:700; color:#27ae60;">🟢 Strategis</td>
+                <td style="padding:10px;">Program Pemuda Penggerak Damai: olahraga, seni budaya, rumah baca, pelatihan</td>
+                <td style="padding:10px;">Semua wilayah</td>
+                <td style="padding:10px;">Gereja, kepala suku, WVI</td>
+            </tr>
+        </tbody>
+    </table>
+    
+    <p style="margin-top:24px; font-size:0.82rem; color:#888;">
+        <i>Laporan ini disusun berdasarkan analisis konten kualitatif dari 356 tanggapan Dataset Kelompok Masyarakat 
+        dan 296 tanggapan Dataset KII. Analisis menggunakan pendekatan keyword extraction berbasis tema isu.</i>
+    </p>
+    </div>
+    """, unsafe_allow_html=True)
+
+    st.divider()
+
+    # Raw Data Explorer
+    with st.expander("🔎 Eksplorasi Data Mentah"):
+        tab_raw1, tab_raw2 = st.tabs(["Dataset Kelompok", "Dataset KII"])
+        with tab_raw1:
+            q_filter = st.selectbox("Filter Pertanyaan:", ["(Semua)"] + sorted(dfk["Pertanyaan"].unique().tolist()), key="q1")
+            df_show = dfk if q_filter == "(Semua)" else dfk[dfk["Pertanyaan"] == q_filter]
+            st.dataframe(df_show[["Wilayah", "Kelompok_Usia", "Jenis_Kelamin", "Pertanyaan", "Tanggapan"]],
+                         use_container_width=True, hide_index=True)
+            st.caption(f"{len(df_show)} baris ditampilkan")
+        with tab_raw2:
+            q_filter2 = st.selectbox("Filter Pertanyaan:", ["(Semua)"] + sorted(dfkii["Pertanyaan"].unique().tolist()), key="q2")
+            df_show2 = dfkii if q_filter2 == "(Semua)" else dfkii[dfkii["Pertanyaan"] == q_filter2]
+            st.dataframe(df_show2[["Wilayah", "Narsum", "Pertanyaan", "Tanggapan"]],
+                         use_container_width=True, hide_index=True)
+            st.caption(f"{len(df_show2)} baris ditampilkan")
